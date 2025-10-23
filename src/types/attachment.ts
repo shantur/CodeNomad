@@ -52,12 +52,21 @@ export function createFileAttachment(
   filename: string,
   mime: string = "text/plain",
   data?: Uint8Array,
+  workspaceRoot?: string,
 ): Attachment {
+  let fileUrl = path
+  if (workspaceRoot && !path.startsWith("file://")) {
+    const absolutePath = path.startsWith("/") ? path : `${workspaceRoot}/${path}`
+    fileUrl = `file://${absolutePath}`
+  } else if (!path.startsWith("file://") && path.startsWith("/")) {
+    fileUrl = `file://${path}`
+  }
+
   return {
     id: crypto.randomUUID(),
     type: "file",
     display: `@${filename}`,
-    url: path,
+    url: fileUrl,
     filename,
     mediaType: mime,
     source: {

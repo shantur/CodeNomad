@@ -166,7 +166,7 @@ export default function PromptInput(props: PromptInputProps) {
     const alreadyAttached = existingAttachments.some((att) => att.source.type === "file" && att.source.path === path)
 
     if (!alreadyAttached) {
-      const attachment = createFileAttachment(path, filename)
+      const attachment = createFileAttachment(path, filename, "text/plain", undefined, props.instanceFolder)
       addAttachment(props.instanceId, props.sessionId, attachment)
     }
 
@@ -237,7 +237,7 @@ export default function PromptInput(props: PromptInputProps) {
       const filename = file.name
       const mime = file.type || "text/plain"
 
-      const attachment = createFileAttachment(path, filename, mime)
+      const attachment = createFileAttachment(path, filename, mime, undefined, props.instanceFolder)
       addAttachment(props.instanceId, props.sessionId, attachment)
     }
 
