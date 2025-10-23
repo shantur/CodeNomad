@@ -53,17 +53,16 @@ export function createFileAttachment(
   mime: string = "text/plain",
   data?: Uint8Array,
 ): Attachment {
-  const absolutePath = path.startsWith("/") ? path : `/${path}`
   return {
     id: crypto.randomUUID(),
     type: "file",
     display: `@${filename}`,
-    url: `file://${absolutePath}`,
+    url: path,
     filename,
     mediaType: mime,
     source: {
       type: "file",
-      path: absolutePath,
+      path: path,
       mime,
       data,
     },

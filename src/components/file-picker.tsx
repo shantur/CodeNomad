@@ -22,6 +22,7 @@ const FilePicker: Component<FilePickerProps> = (props) => {
   const [selectedIndex, setSelectedIndex] = createSignal(0)
   const [loading, setLoading] = createSignal(false)
   const [cachedGitFiles, setCachedGitFiles] = createSignal<FileItem[]>([])
+  const [isInitialized, setIsInitialized] = createSignal(false)
 
   let containerRef: HTMLDivElement | undefined
   let gitFilesFetched = false
@@ -113,15 +114,14 @@ const FilePicker: Component<FilePickerProps> = (props) => {
   }
 
   let lastQuery = ""
-  let isInitialized = false
 
   createEffect(() => {
     console.log(
-      `[FilePicker] Effect triggered - open: ${props.open}, query: "${props.searchQuery}", gitFilesFetched: ${gitFilesFetched}, isInitialized: ${isInitialized}`,
+      `[FilePicker] Effect triggered - open: ${props.open}, query: "${props.searchQuery}", gitFilesFetched: ${gitFilesFetched}, isInitialized: ${isInitialized()}`,
     )
 
-    if (props.open && !isInitialized) {
-      isInitialized = true
+    if (props.open && !isInitialized()) {
+      setIsInitialized(true)
       console.log("[FilePicker] First open - fetching git files and initial files")
       fetchGitFiles()
       fetchFiles(props.searchQuery)
