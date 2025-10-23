@@ -1,15 +1,13 @@
-import { createSignal, Show, onMount, createEffect, For } from "solid-js"
+import { createSignal, Show, onMount } from "solid-js"
 import AgentSelector from "./agent-selector"
 import ModelSelector from "./model-selector"
 import FilePicker from "./file-picker"
-import AttachmentChip from "./attachment-chip"
 import { addToHistory, getHistory } from "../stores/message-history"
-import { getAttachments, addAttachment, removeAttachment, clearAttachments } from "../stores/attachments"
+import { getAttachments, addAttachment, clearAttachments } from "../stores/attachments"
 import { createFileAttachment } from "../types/attachment"
 import type { Attachment } from "../types/attachment"
 import Kbd from "./kbd"
 import HintRow from "./hint-row"
-import { isMac } from "../lib/keyboard-utils"
 import { getActiveInstance } from "../stores/instances"
 
 interface PromptInputProps {
@@ -133,7 +131,9 @@ export default function PromptInput(props: PromptInputProps) {
 
     const previousAtPosition = atPosition()
 
-    if (previousAtPosition !== null && lastAtIndex !== previousAtPosition) {
+    if (previousAtPosition !== null && lastAtIndex === -1) {
+      setIgnoredAtPositions(new Set<number>())
+    } else if (previousAtPosition !== null && lastAtIndex !== previousAtPosition) {
       setIgnoredAtPositions((prev) => {
         const next = new Set(prev)
         next.delete(previousAtPosition)
@@ -171,13 +171,16 @@ export default function PromptInput(props: PromptInputProps) {
     if (pos !== null) {
       const before = currentPrompt.substring(0, pos)
       const after = currentPrompt.substring(cursorPos)
-      const newPrompt = before + " " + after
+      const attachmentText = `@${filename}`
+      const newPrompt = before + attachmentText + " " + after
       setPrompt(newPrompt)
 
       setTimeout(() => {
         if (textareaRef) {
-          const newCursorPos = pos + 1
+          const newCursorPos = pos + attachmentText.length + 1
           textareaRef.setSelectionRange(newCursorPos, newCursorPos)
+          textareaRef.style.height = "auto"
+          textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
         }
       }, 0)
     }
@@ -201,10 +204,6 @@ export default function PromptInput(props: PromptInputProps) {
   }
 
   function handleFilePickerNavigate(_direction: "up" | "down") {}
-
-  function handleRemoveAttachment(attachmentId: string) {
-    removeAttachment(props.instanceId, props.sessionId, attachmentId)
-  }
 
   function handleDragOver(e: DragEvent) {
     e.preventDefault()
@@ -264,14 +263,6 @@ export default function PromptInput(props: PromptInputProps) {
           />
         </Show>
 
-        <Show when={attachments().length > 0}>
-          <div class="flex flex-wrap gap-1 px-3 pt-2 pb-1">
-            <For each={attachments()}>
-              {(att) => <AttachmentChip attachment={att} onRemove={() => handleRemoveAttachment(att.id)} />}
-            </For>
-          </div>
-        </Show>
-
         <textarea
           ref={textareaRef}
           class="prompt-input"
@@ -294,6 +285,9 @@ export default function PromptInput(props: PromptInputProps) {
         <HintRow>
           <Kbd>Enter</Kbd> to send • <Kbd>Shift+Enter</Kbd> for new line • <Kbd>@</Kbd> for files • <Kbd>↑↓</Kbd> for
           history
+          <Show when={attachments().length > 0}>
+            <span class="ml-2 text-xs text-gray-500">• {attachments().length} file(s) attached</span>
+          </Show>
         </HintRow>
         <div class="flex items-center gap-2">
           <AgentSelector
