@@ -1,8 +1,7 @@
 import { createSignal, Show, onMount, For, onCleanup } from "solid-js"
 import AgentSelector from "./agent-selector"
 import ModelSelector from "./model-selector"
-import FilePicker from "./file-picker"
-import AgentPicker from "./agent-picker"
+import UnifiedPicker from "./unified-picker"
 import { addToHistory, getHistory } from "../stores/message-history"
 import { getAttachments, addAttachment, clearAttachments, removeAttachment } from "../stores/attachments"
 import { createFileAttachment, createTextAttachment, createAgentAttachment } from "../types/attachment"
@@ -30,10 +29,8 @@ export default function PromptInput(props: PromptInputProps) {
   const [history, setHistory] = createSignal<string[]>([])
   const [historyIndex, setHistoryIndex] = createSignal(-1)
   const [isFocused, setIsFocused] = createSignal(false)
-  const [showFilePicker, setShowFilePicker] = createSignal(false)
-  const [showAgentPicker, setShowAgentPicker] = createSignal(false)
-  const [fileSearchQuery, setFileSearchQuery] = createSignal("")
-  const [agentSearchQuery, setAgentSearchQuery] = createSignal("")
+  const [showPicker, setShowPicker] = createSignal(false)
+  const [searchQuery, setSearchQuery] = createSignal("")
   const [atPosition, setAtPosition] = createSignal<number | null>(null)
   const [isDragging, setIsDragging] = createSignal(false)
   const [ignoredAtPositions, setIgnoredAtPositions] = createSignal<Set<number>>(new Set())
@@ -253,7 +250,7 @@ export default function PromptInput(props: PromptInputProps) {
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey && !showFilePicker() && !showAgentPicker()) {
+    if (e.key === "Enter" && !e.shiftKey && !showPicker()) {
       e.preventDefault()
       handleSend()
       return
@@ -262,7 +259,7 @@ export default function PromptInput(props: PromptInputProps) {
     const atStart = textarea.selectionStart === 0 && textarea.selectionEnd === 0
     const currentHistory = history()
 
-    if (e.key === "ArrowUp" && !showFilePicker() && !showAgentPicker() && atStart && currentHistory.length > 0) {
+    if (e.key === "ArrowUp" && !showPicker() && atStart && currentHistory.length > 0) {
       e.preventDefault()
       const newIndex = historyIndex() === -1 ? 0 : Math.min(historyIndex() + 1, currentHistory.length - 1)
       setHistoryIndex(newIndex)
@@ -274,7 +271,7 @@ export default function PromptInput(props: PromptInputProps) {
       return
     }
 
-    if (e.key === "ArrowDown" && !showFilePicker() && !showAgentPicker() && historyIndex() >= 0) {
+    if (e.key === "ArrowDown" && !showPicker() && historyIndex() >= 0) {
       e.preventDefault()
       const newIndex = historyIndex() - 1
       if (newIndex >= 0) {
@@ -355,157 +352,125 @@ export default function PromptInput(props: PromptInputProps) {
       if (!hasSpace && cursorPos === lastAtIndex + textAfterAt.length + 1) {
         if (!ignoredAtPositions().has(lastAtIndex)) {
           setAtPosition(lastAtIndex)
-
-          const availableAgents = instanceAgents()
-          const matchesAgent = availableAgents.some((agent) =>
-            agent.name.toLowerCase().includes(textAfterAt.toLowerCase()),
-          )
-
-          if (matchesAgent && textAfterAt.length > 0) {
-            setAgentSearchQuery(textAfterAt)
-            setShowAgentPicker(true)
-            setShowFilePicker(false)
-          } else {
-            setFileSearchQuery(textAfterAt)
-            setShowFilePicker(true)
-            setShowAgentPicker(false)
-          }
+          setSearchQuery(textAfterAt)
+          setShowPicker(true)
         }
         return
       }
     }
 
-    setShowFilePicker(false)
-    setShowAgentPicker(false)
+    setShowPicker(false)
     setAtPosition(null)
   }
 
-  function handleFileSelect(path: string) {
-    const isFolder = path.endsWith("/")
-    const filename = path.split("/").pop() || path
+  function handlePickerSelect(item: { type: "agent"; agent: any } | { type: "file"; file: any }) {
+    if (item.type === "agent") {
+      const agentName = item.agent.name
+      const existingAttachments = attachments()
+      const alreadyAttached = existingAttachments.some(
+        (att) => att.source.type === "agent" && att.source.name === agentName,
+      )
 
-    if (isFolder) {
+      if (!alreadyAttached) {
+        const attachment = createAgentAttachment(agentName)
+        addAttachment(props.instanceId, props.sessionId, attachment)
+      }
+
       const currentPrompt = prompt()
       const pos = atPosition()
       const cursorPos = textareaRef?.selectionStart || 0
 
       if (pos !== null) {
-        const before = currentPrompt.substring(0, pos + 1)
+        const before = currentPrompt.substring(0, pos)
         const after = currentPrompt.substring(cursorPos)
-        const newPrompt = before + path + after
+        const attachmentText = `@${agentName}`
+        const newPrompt = before + attachmentText + " " + after
         setPrompt(newPrompt)
-        setFileSearchQuery(path)
 
         setTimeout(() => {
           if (textareaRef) {
-            const newCursorPos = pos + 1 + path.length
+            const newCursorPos = pos + attachmentText.length + 1
             textareaRef.setSelectionRange(newCursorPos, newCursorPos)
             textareaRef.style.height = "auto"
             textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
-            textareaRef.focus()
           }
         }, 0)
       }
+    } else if (item.type === "file") {
+      const path = item.file.path
+      const isFolder = path.endsWith("/")
+      const filename = path.split("/").pop() || path
 
-      return
-    }
+      if (isFolder) {
+        const currentPrompt = prompt()
+        const pos = atPosition()
+        const cursorPos = textareaRef?.selectionStart || 0
 
-    const existingAttachments = attachments()
-    const alreadyAttached = existingAttachments.some((att) => att.source.type === "file" && att.source.path === path)
+        if (pos !== null) {
+          const before = currentPrompt.substring(0, pos + 1)
+          const after = currentPrompt.substring(cursorPos)
+          const newPrompt = before + path + after
+          setPrompt(newPrompt)
+          setSearchQuery(path)
 
-    if (!alreadyAttached) {
-      const attachment = createFileAttachment(path, filename, "text/plain", undefined, props.instanceFolder)
-      addAttachment(props.instanceId, props.sessionId, attachment)
-    }
-
-    const currentPrompt = prompt()
-    const pos = atPosition()
-    const cursorPos = textareaRef?.selectionStart || 0
-
-    if (pos !== null) {
-      const before = currentPrompt.substring(0, pos)
-      const after = currentPrompt.substring(cursorPos)
-      const attachmentText = `@${filename}`
-      const newPrompt = before + attachmentText + " " + after
-      setPrompt(newPrompt)
-
-      setTimeout(() => {
-        if (textareaRef) {
-          const newCursorPos = pos + attachmentText.length + 1
-          textareaRef.setSelectionRange(newCursorPos, newCursorPos)
-          textareaRef.style.height = "auto"
-          textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+          setTimeout(() => {
+            if (textareaRef) {
+              const newCursorPos = pos + 1 + path.length
+              textareaRef.setSelectionRange(newCursorPos, newCursorPos)
+              textareaRef.style.height = "auto"
+              textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+              textareaRef.focus()
+            }
+          }, 0)
         }
-      }, 0)
+
+        return
+      }
+
+      const existingAttachments = attachments()
+      const alreadyAttached = existingAttachments.some((att) => att.source.type === "file" && att.source.path === path)
+
+      if (!alreadyAttached) {
+        const attachment = createFileAttachment(path, filename, "text/plain", undefined, props.instanceFolder)
+        addAttachment(props.instanceId, props.sessionId, attachment)
+      }
+
+      const currentPrompt = prompt()
+      const pos = atPosition()
+      const cursorPos = textareaRef?.selectionStart || 0
+
+      if (pos !== null) {
+        const before = currentPrompt.substring(0, pos)
+        const after = currentPrompt.substring(cursorPos)
+        const attachmentText = `@${filename}`
+        const newPrompt = before + attachmentText + " " + after
+        setPrompt(newPrompt)
+
+        setTimeout(() => {
+          if (textareaRef) {
+            const newCursorPos = pos + attachmentText.length + 1
+            textareaRef.setSelectionRange(newCursorPos, newCursorPos)
+            textareaRef.style.height = "auto"
+            textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+          }
+        }, 0)
+      }
     }
 
-    setShowFilePicker(false)
+    setShowPicker(false)
     setAtPosition(null)
-    setFileSearchQuery("")
-
+    setSearchQuery("")
     textareaRef?.focus()
   }
 
-  function handleFilePickerClose() {
+  function handlePickerClose() {
     const pos = atPosition()
     if (pos !== null) {
       setIgnoredAtPositions((prev) => new Set(prev).add(pos))
     }
-    setShowFilePicker(false)
+    setShowPicker(false)
     setAtPosition(null)
-    setFileSearchQuery("")
-    setTimeout(() => textareaRef?.focus(), 0)
-  }
-
-  function handleFilePickerNavigate(_direction: "up" | "down") {}
-
-  function handleAgentSelect(agentName: string) {
-    const existingAttachments = attachments()
-    const alreadyAttached = existingAttachments.some(
-      (att) => att.source.type === "agent" && att.source.name === agentName,
-    )
-
-    if (!alreadyAttached) {
-      const attachment = createAgentAttachment(agentName)
-      addAttachment(props.instanceId, props.sessionId, attachment)
-    }
-
-    const currentPrompt = prompt()
-    const pos = atPosition()
-    const cursorPos = textareaRef?.selectionStart || 0
-
-    if (pos !== null) {
-      const before = currentPrompt.substring(0, pos)
-      const after = currentPrompt.substring(cursorPos)
-      const attachmentText = `@${agentName}`
-      const newPrompt = before + attachmentText + " " + after
-      setPrompt(newPrompt)
-
-      setTimeout(() => {
-        if (textareaRef) {
-          const newCursorPos = pos + attachmentText.length + 1
-          textareaRef.setSelectionRange(newCursorPos, newCursorPos)
-          textareaRef.style.height = "auto"
-          textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
-        }
-      }, 0)
-    }
-
-    setShowAgentPicker(false)
-    setAtPosition(null)
-    setAgentSearchQuery("")
-
-    textareaRef?.focus()
-  }
-
-  function handleAgentPickerClose() {
-    const pos = atPosition()
-    if (pos !== null) {
-      setIgnoredAtPositions((prev) => new Set(prev).add(pos))
-    }
-    setShowAgentPicker(false)
-    setAtPosition(null)
-    setAgentSearchQuery("")
+    setSearchQuery("")
     setTimeout(() => textareaRef?.focus(), 0)
   }
 
@@ -555,27 +520,16 @@ export default function PromptInput(props: PromptInputProps) {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <Show when={showFilePicker() && instance()}>
-          <FilePicker
-            open={showFilePicker()}
-            onClose={handleFilePickerClose}
-            onSelect={handleFileSelect}
-            onNavigate={handleFilePickerNavigate}
+        <Show when={showPicker() && instance()}>
+          <UnifiedPicker
+            open={showPicker()}
+            onClose={handlePickerClose}
+            onSelect={handlePickerSelect}
+            agents={instanceAgents()}
             instanceClient={instance()!.client}
-            searchQuery={fileSearchQuery()}
+            searchQuery={searchQuery()}
             textareaRef={textareaRef}
             workspaceFolder={props.instanceFolder}
-          />
-        </Show>
-
-        <Show when={showAgentPicker()}>
-          <AgentPicker
-            open={showAgentPicker()}
-            onClose={handleAgentPickerClose}
-            onSelect={handleAgentSelect}
-            agents={instanceAgents()}
-            searchQuery={agentSearchQuery()}
-            textareaRef={textareaRef}
           />
         </Show>
 
