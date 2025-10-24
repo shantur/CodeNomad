@@ -34,9 +34,9 @@ const SessionTabs: Component<SessionTabsProps> = (props) => {
             )}
           </For>
           <SessionTab
-            special="logs"
-            active={props.activeSessionId === "logs"}
-            onSelect={() => props.onSelect("logs")}
+            special="info"
+            active={props.activeSessionId === "info"}
+            onSelect={() => props.onSelect("info")}
           />
           <button
             class="new-tab-button inline-flex items-center justify-center w-8 h-8 rounded-md text-gray-600 hover:bg-gray-100 transition-colors"

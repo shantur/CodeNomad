@@ -8,7 +8,7 @@ import InstanceTabs from "./components/instance-tabs"
 import SessionTabs from "./components/session-tabs"
 import MessageStream from "./components/message-stream"
 import PromptInput from "./components/prompt-input"
-import LogsView from "./components/logs-view"
+import InfoView from "./components/info-view"
 import { initMarkdown } from "./lib/markdown"
 import { createCommandRegistry } from "./lib/commands"
 import type { Command } from "./lib/commands"
@@ -328,21 +328,21 @@ const App: Component = () => {
       action: async () => {
         const instance = activeInstance()
         const sessionId = activeSessionIdForInstance()
-        if (!instance || !sessionId || sessionId === "logs") return
+        if (!instance || !sessionId || sessionId === "info") return
         await handleCloseSession(instance.id, sessionId)
       },
     })
 
     commandRegistry.register({
-      id: "switch-to-logs",
-      label: "Switch to Logs",
-      description: "Jump to logs view for current instance",
+      id: "switch-to-info",
+      label: "Switch to Info",
+      description: "Jump to info view for current instance",
       category: "Session",
-      keywords: ["logs", "console", "output"],
+      keywords: ["info", "info", "console", "output"],
       shortcut: { key: "L", meta: true, shift: true },
       action: () => {
         const instance = activeInstance()
-        if (instance) setActiveSession(instance.id, "logs")
+        if (instance) setActiveSession(instance.id, "info")
       },
     })
 
@@ -359,7 +359,7 @@ const App: Component = () => {
         const parentId = activeParentSessionId().get(instanceId)
         if (!parentId) return
         const familySessions = getSessionFamily(instanceId, parentId)
-        const ids = familySessions.map((s) => s.id).concat(["logs"])
+        const ids = familySessions.map((s) => s.id).concat(["info"])
         if (ids.length <= 1) return
         const current = ids.indexOf(activeSessionId().get(instanceId) || "")
         const next = (current + 1) % ids.length
@@ -380,7 +380,7 @@ const App: Component = () => {
         const parentId = activeParentSessionId().get(instanceId)
         if (!parentId) return
         const familySessions = getSessionFamily(instanceId, parentId)
-        const ids = familySessions.map((s) => s.id).concat(["logs"])
+        const ids = familySessions.map((s) => s.id).concat(["info"])
         if (ids.length <= 1) return
         const current = ids.indexOf(activeSessionId().get(instanceId) || "")
         const prev = current <= 0 ? ids.length - 1 : current - 1
@@ -397,7 +397,7 @@ const App: Component = () => {
       action: async () => {
         const instance = activeInstance()
         const sessionId = activeSessionIdForInstance()
-        if (!instance || !instance.client || !sessionId || sessionId === "logs") return
+        if (!instance || !instance.client || !sessionId || sessionId === "info") return
 
         const sessions = getSessions(instance.id)
         const session = sessions.find((s) => s.id === sessionId)
@@ -429,7 +429,7 @@ const App: Component = () => {
       action: async () => {
         const instance = activeInstance()
         const sessionId = activeSessionIdForInstance()
-        if (!instance || !instance.client || !sessionId || sessionId === "logs") return
+        if (!instance || !instance.client || !sessionId || sessionId === "info") return
 
         const sessions = getSessions(instance.id)
         const session = sessions.find((s) => s.id === sessionId)
@@ -567,7 +567,7 @@ const App: Component = () => {
       action: async () => {
         const instance = activeInstance()
         const sessionId = activeSessionIdForInstance()
-        if (!instance || !instance.client || !sessionId || sessionId === "logs") return
+        if (!instance || !instance.client || !sessionId || sessionId === "info") return
 
         const sessions = getSessions(instance.id)
         const session = sessions.find((s) => s.id === sessionId)
@@ -703,7 +703,7 @@ const App: Component = () => {
         if (!instance) return false
 
         const sessionId = activeSessionIdForInstance()
-        if (!sessionId || sessionId === "logs") return false
+        if (!sessionId || sessionId === "info") return false
 
         const sessions = getSessions(instance.id)
         const session = sessions.find((s) => s.id === sessionId)
@@ -727,7 +727,7 @@ const App: Component = () => {
 
         const instance = activeInstance()
         const sessionId = activeSessionIdForInstance()
-        if (!instance || !sessionId || sessionId === "logs") return
+        if (!instance || !sessionId || sessionId === "info") return
 
         try {
           await abortSession(instance.id, sessionId)
@@ -820,13 +820,13 @@ const App: Component = () => {
 
                     <div class="content-area flex-1 overflow-hidden flex flex-col">
                       <Show
-                        when={activeSessionIdForInstance() === "logs"}
+                        when={activeSessionIdForInstance() === "info"}
                         fallback={
                           <Show
                             when={activeSessionIdForInstance()}
                             fallback={
                               <div class="flex items-center justify-center h-full">
-                                <div class="text-center text-gray-500">
+                                <div class="text-center text-gray-500 dark:text-gray-400">
                                   <p class="mb-2">No session selected</p>
                                   <p class="text-sm">Select a session to view messages</p>
                                 </div>
@@ -843,7 +843,7 @@ const App: Component = () => {
                           </Show>
                         }
                       >
-                        <LogsView instanceId={instance().id} />
+                        <InfoView instanceId={instance().id} />
                       </Show>
                     </div>
                   </Show>

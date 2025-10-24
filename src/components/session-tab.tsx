@@ -1,10 +1,10 @@
 import { Component, Show } from "solid-js"
 import type { Session } from "../types/session"
-import { MessageSquare, Terminal, X } from "lucide-solid"
+import { MessageSquare, Info, X } from "lucide-solid"
 
 interface SessionTabProps {
   session?: Session
-  special?: "logs"
+  special?: "info"
   active: boolean
   isParent?: boolean
   onSelect: () => void
@@ -13,7 +13,7 @@ interface SessionTabProps {
 
 const SessionTab: Component<SessionTabProps> = (props) => {
   const label = () => {
-    if (props.special === "logs") return "Logs"
+    if (props.special === "info") return "Info"
     return props.session?.title || "Untitled"
   }
 
@@ -22,16 +22,16 @@ const SessionTab: Component<SessionTabProps> = (props) => {
       <button
         class={`session-tab inline-flex items-center gap-2 px-3 py-1.5 rounded-t-md max-w-[150px] transition-colors text-sm ${
           props.active
-            ? "bg-white border-b-2 border-blue-500 font-medium text-gray-900"
-            : "text-gray-600 hover:bg-gray-100"
-        } ${props.special === "logs" ? "text-gray-500" : ""} ${props.isParent && !props.active ? "font-semibold" : ""}`}
+            ? "bg-white dark:bg-gray-800 border-b-2 border-blue-500 font-medium text-gray-900 dark:text-gray-100"
+            : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+        } ${props.special === "info" ? "text-gray-500 dark:text-gray-400" : ""} ${props.isParent && !props.active ? "font-semibold" : ""}`}
         onClick={props.onSelect}
         title={label()}
         role="tab"
         aria-selected={props.active}
       >
-        <Show when={props.special === "logs"} fallback={<MessageSquare class="w-3.5 h-3.5 flex-shrink-0" />}>
-          <Terminal class="w-3.5 h-3.5 flex-shrink-0" />
+        <Show when={props.special === "info"} fallback={<MessageSquare class="w-3.5 h-3.5 flex-shrink-0" />}>
+          <Info class="w-3.5 h-3.5 flex-shrink-0" />
         </Show>
         <span class="tab-label truncate">{label()}</span>
         <Show when={!props.special && props.onClose}>
