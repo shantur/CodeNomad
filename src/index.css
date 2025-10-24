@@ -188,6 +188,33 @@ body {
   color: var(--text-muted);
 }
 
+.message-revert-button {
+  background: none;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 16px;
+  line-height: 1;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 24px;
+}
+
+.message-revert-button:hover {
+  background-color: var(--hover-bg);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.message-revert-button:active {
+  transform: scale(0.95);
+}
+
 .message-content {
   padding-top: 6px;
   line-height: 1.6;

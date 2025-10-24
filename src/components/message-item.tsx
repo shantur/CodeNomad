@@ -6,6 +6,7 @@ interface MessageItemProps {
   message: Message
   messageInfo?: any
   isQueued?: boolean
+  onRevert?: (messageId: string) => void
 }
 
 export default function MessageItem(props: MessageItemProps) {
@@ -42,11 +43,27 @@ export default function MessageItem(props: MessageItemProps) {
     return !hasContent() && props.messageInfo?.time?.completed === 0
   }
 
+  const handleRevert = () => {
+    if (props.onRevert && isUser()) {
+      props.onRevert(props.message.id)
+    }
+  }
+
   return (
     <div class={`message-item ${isUser() ? "user" : "assistant"}`}>
       <div class="message-header">
         <span class="message-sender">{isUser() ? "You" : "Assistant"}</span>
         <span class="message-timestamp">{timestamp()}</span>
+        <Show when={isUser() && props.onRevert}>
+          <button
+            class="message-revert-button"
+            onClick={handleRevert}
+            title="Revert to this message"
+            aria-label="Revert to this message"
+          >
+            ↶
+          </button>
+        </Show>
       </div>
 
       <div class="message-content">

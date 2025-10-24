@@ -77,6 +77,43 @@ const SessionView: Component<{
     await updateSessionModel(props.instanceId, props.sessionId, model)
   }
 
+  async function handleRevert(messageId: string) {
+    const instance = instances().get(props.instanceId)
+    if (!instance || !instance.client) return
+
+    try {
+      console.log("Reverting to message:", messageId)
+
+      await instance.client.session.revert({
+        path: { id: props.sessionId },
+        body: { messageID: messageId },
+      })
+
+      // Restore the message to input
+      const currentSession = session()
+      if (currentSession) {
+        const revertedMessage = currentSession.messages.find((m) => m.id === messageId)
+        const revertedInfo = currentSession.messagesInfo.get(messageId)
+
+        if (revertedMessage && revertedInfo?.role === "user") {
+          const textParts = revertedMessage.parts.filter((p: any) => p.type === "text")
+          if (textParts.length > 0) {
+            const textarea = document.querySelector(".prompt-input") as HTMLTextAreaElement
+            if (textarea) {
+              textarea.value = textParts.map((p: any) => p.text).join("\n")
+              textarea.focus()
+            }
+          }
+        }
+      }
+
+      console.log("Reverted to message - UI will update via SSE")
+    } catch (error) {
+      console.error("Failed to revert:", error)
+      alert("Failed to revert to message")
+    }
+  }
+
   return (
     <Show
       when={session()}
@@ -94,6 +131,7 @@ const SessionView: Component<{
             messages={s().messages || []}
             messagesInfo={s().messagesInfo}
             revert={s().revert}
+            onRevert={handleRevert}
           />
           <PromptInput
             instanceId={props.instanceId}

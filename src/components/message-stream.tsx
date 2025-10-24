@@ -17,6 +17,7 @@ interface MessageStreamProps {
     diff?: string
   }
   loading?: boolean
+  onRevert?: (messageId: string) => void
 }
 
 interface DisplayItem {
@@ -179,7 +180,12 @@ export default function MessageStream(props: MessageStreamProps) {
                   </div>
                 }
               >
-                <MessageItem message={item.data} messageInfo={item.messageInfo} isQueued={item.data.isQueued} />
+                <MessageItem
+                  message={item.data}
+                  messageInfo={item.messageInfo}
+                  isQueued={item.data.isQueued}
+                  onRevert={props.onRevert}
+                />
               </Show>
             )
           }}
