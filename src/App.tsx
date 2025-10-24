@@ -93,6 +93,7 @@ const SessionView: Component<{
             sessionId={s().id}
             messages={s().messages || []}
             messagesInfo={s().messagesInfo}
+            revert={s().revert}
           />
           <PromptInput
             instanceId={props.instanceId}
@@ -337,11 +338,23 @@ const App: Component = () => {
         const sessionId = activeSessionIdForInstance()
         if (!instance || !instance.client || !sessionId || sessionId === "logs") return
 
+        const sessions = getSessions(instance.id)
+        const session = sessions.find((s) => s.id === sessionId)
+        if (!session) return
+
         try {
-          await instance.client.session.summarize({ path: { id: sessionId } })
-          console.log("Session compacted")
-        } catch (error) {
+          console.log("Compacting session...")
+          await instance.client.session.summarize({
+            path: { id: sessionId },
+            body: {
+              providerID: session.model.providerId,
+              modelID: session.model.modelId,
+            },
+          })
+        } catch (error: any) {
           console.error("Failed to compact session:", error)
+          const message = error?.message || "Failed to compact session"
+          alert(`Compact failed: ${message}`)
         }
       },
     })
@@ -357,11 +370,76 @@ const App: Component = () => {
         const sessionId = activeSessionIdForInstance()
         if (!instance || !instance.client || !sessionId || sessionId === "logs") return
 
+        const sessions = getSessions(instance.id)
+        const session = sessions.find((s) => s.id === sessionId)
+        if (!session) return
+
+        // Find the message to revert to (previous user message before revert point)
+        let after = 0
+        const revert = session.revert
+
+        if (revert?.messageID) {
+          // Find the timestamp of the revert point
+          for (let i = session.messages.length - 1; i >= 0; i--) {
+            const msg = session.messages[i]
+            const info = session.messagesInfo.get(msg.id)
+            if (info?.id === revert.messageID) {
+              after = info.time?.created || 0
+              break
+            }
+          }
+        }
+
+        // Find the previous user message
+        let messageID = ""
+        for (let i = session.messages.length - 1; i >= 0; i--) {
+          const msg = session.messages[i]
+          const info = session.messagesInfo.get(msg.id)
+
+          if (msg.type === "user" && info?.time?.created) {
+            if (after > 0 && info.time.created >= after) {
+              continue
+            }
+            messageID = msg.id
+            break
+          }
+        }
+
+        if (!messageID) {
+          alert("Nothing to undo")
+          return
+        }
+
         try {
-          await instance.client.session.revert({ path: { id: sessionId } })
-          console.log("Last message reverted")
+          // Find the reverted message to restore to input
+          const revertedMessage = session.messages.find((m) => m.id === messageID)
+          const revertedInfo = session.messagesInfo.get(messageID)
+
+          console.log("Reverting to message:", messageID)
+
+          await instance.client.session.revert({
+            path: { id: sessionId },
+            body: { messageID },
+          })
+
+          console.log("Revert API call completed")
+
+          // Restore the reverted user message to the prompt input
+          if (revertedMessage && revertedInfo?.role === "user") {
+            const textParts = revertedMessage.parts.filter((p: any) => p.type === "text")
+            if (textParts.length > 0) {
+              const textarea = document.querySelector(".prompt-input") as HTMLTextAreaElement
+              if (textarea) {
+                textarea.value = textParts.map((p: any) => p.text).join("\n")
+                textarea.focus()
+              }
+            }
+          }
+
+          console.log("Last message reverted - UI will update via SSE")
         } catch (error) {
           console.error("Failed to revert message:", error)
+          alert("Failed to revert message")
         }
       },
     })
@@ -429,9 +507,26 @@ const App: Component = () => {
         const sessionId = activeSessionIdForInstance()
         if (!instance || !instance.client || !sessionId || sessionId === "logs") return
 
+        const sessions = getSessions(instance.id)
+        const session = sessions.find((s) => s.id === sessionId)
+        if (!session) return
+
         try {
-          await instance.client.session.init({ path: { id: sessionId } })
-          console.log("Initialized AGENTS.md")
+          // Generate ID similar to server format: timestamp in hex + random chars
+          const timestamp = Date.now()
+          const timePart = (timestamp * 0x1000).toString(16).padStart(12, "0")
+          const randomPart = Math.random().toString(16).substring(2, 16)
+          const messageID = `msg_${timePart}${randomPart}`
+
+          await instance.client.session.init({
+            path: { id: sessionId },
+            body: {
+              messageID,
+              providerID: session.model.providerId,
+              modelID: session.model.modelId,
+            },
+          })
+          console.log("Initializing AGENTS.md...")
         } catch (error) {
           console.error("Failed to initialize AGENTS.md:", error)
         }

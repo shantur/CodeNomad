@@ -52,6 +52,14 @@ async function fetchSessions(instanceId: string): Promise<void> {
           created: apiSession.time.created,
           updated: apiSession.time.updated,
         },
+        revert: apiSession.revert
+          ? {
+              messageID: apiSession.revert.messageID,
+              partID: apiSession.revert.partID,
+              snapshot: apiSession.revert.snapshot,
+              diff: apiSession.revert.diff,
+            }
+          : undefined,
         messages: [],
         messagesInfo: new Map(),
       })
@@ -153,6 +161,14 @@ async function createSession(instanceId: string, agent?: string): Promise<Sessio
         created: response.data.time.created,
         updated: response.data.time.updated,
       },
+      revert: response.data.revert
+        ? {
+            messageID: response.data.revert.messageID,
+            partID: response.data.revert.partID,
+            snapshot: response.data.revert.snapshot,
+            diff: response.data.revert.diff,
+          }
+        : undefined,
       messages: [],
       messagesInfo: new Map(),
     }
@@ -358,9 +374,21 @@ function getSessionFamily(instanceId: string, parentId: string): Session[] {
   return [parent, ...children]
 }
 
-async function loadMessages(instanceId: string, sessionId: string): Promise<void> {
+async function loadMessages(instanceId: string, sessionId: string, force = false): Promise<void> {
+  // If force reload, clear the loaded cache
+  if (force) {
+    setMessagesLoaded((prev) => {
+      const next = new Map(prev)
+      const loadedSet = next.get(instanceId)
+      if (loadedSet) {
+        loadedSet.delete(sessionId)
+      }
+      return next
+    })
+  }
+
   const alreadyLoaded = messagesLoaded().get(instanceId)?.has(sessionId)
-  if (alreadyLoaded) {
+  if (alreadyLoaded && !force) {
     return
   }
 
@@ -631,6 +659,14 @@ function handleSessionUpdate(instanceId: string, event: any): void {
         ...existingSession.time,
         updated: info.time?.updated || Date.now(),
       },
+      revert: info.revert
+        ? {
+            messageID: info.revert.messageID,
+            partID: info.revert.partID,
+            snapshot: info.revert.snapshot,
+            diff: info.revert.diff,
+          }
+        : existingSession.revert,
     }
 
     setSessions((prev) => {
@@ -812,8 +848,37 @@ async function updateSessionModel(
   })
 }
 
+function handleSessionCompacted(instanceId: string, event: any): void {
+  const sessionID = event.properties?.sessionID
+  if (!sessionID) return
+
+  console.log(`[SSE] Session compacted: ${sessionID}`)
+  loadMessages(instanceId, sessionID, true).catch(console.error)
+}
+
+function handleSessionError(instanceId: string, event: any): void {
+  const error = event.properties?.error
+  const sessionID = event.properties?.sessionID
+  console.error(`[SSE] Session error:`, error)
+
+  let message = error?.data?.message || error?.message || "Unknown error"
+
+  if (error?.data?.responseBody) {
+    try {
+      const body = JSON.parse(error.data.responseBody)
+      if (body.error) {
+        message = body.error
+      }
+    } catch {}
+  }
+
+  alert(`Error: ${message}`)
+}
+
 sseManager.onMessageUpdate = handleMessageUpdate
 sseManager.onSessionUpdate = handleSessionUpdate
+sseManager.onSessionCompacted = handleSessionCompacted
+sseManager.onSessionError = handleSessionError
 
 export {
   sessions,

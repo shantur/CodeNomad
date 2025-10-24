@@ -10,6 +10,12 @@ interface MessageStreamProps {
   sessionId: string
   messages: Message[]
   messagesInfo?: Map<string, any>
+  revert?: {
+    messageID: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
   loading?: boolean
 }
 
@@ -57,6 +63,12 @@ export default function MessageStream(props: MessageStreamProps) {
 
     for (const message of props.messages) {
       const messageInfo = props.messagesInfo?.get(message.id)
+
+      // If we hit the revert point, stop rendering messages
+      if (props.revert?.messageID && message.id === props.revert.messageID) {
+        break
+      }
+
       const textParts = message.parts.filter((p) => p.type === "text" && !p.synthetic)
       const toolParts = message.parts.filter((p) => p.type === "tool")
       const reasoningParts = message.parts.filter((p) => p.type === "reasoning")

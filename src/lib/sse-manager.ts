@@ -92,6 +92,12 @@ class SSEManager {
       case "session.updated":
         this.onSessionUpdate?.(instanceId, event)
         break
+      case "session.compacted":
+        this.onSessionCompacted?.(instanceId, event)
+        break
+      case "session.error":
+        this.onSessionError?.(instanceId, event)
+        break
       case "session.idle":
         console.log("[SSE] Session idle")
         break
@@ -131,6 +137,8 @@ class SSEManager {
 
   onMessageUpdate?: (instanceId: string, event: MessageUpdateEvent) => void
   onSessionUpdate?: (instanceId: string, event: SessionUpdateEvent) => void
+  onSessionCompacted?: (instanceId: string, event: any) => void
+  onSessionError?: (instanceId: string, event: any) => void
 
   getStatus(instanceId: string): "connecting" | "connected" | "disconnected" | "error" | null {
     return connectionStatus().get(instanceId) ?? null

@@ -14,6 +14,12 @@ export interface Session {
     created: number
     updated: number
   }
+  revert?: {
+    messageID: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
   messages: Message[]
   messagesInfo: Map<string, any>
 }
