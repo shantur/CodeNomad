@@ -4,7 +4,7 @@ import ModelSelector from "./model-selector"
 import FilePicker from "./file-picker"
 import { addToHistory, getHistory } from "../stores/message-history"
 import { getAttachments, addAttachment, clearAttachments, removeAttachment } from "../stores/attachments"
-import { createFileAttachment } from "../types/attachment"
+import { createFileAttachment, createTextAttachment } from "../types/attachment"
 import type { Attachment } from "../types/attachment"
 import Kbd from "./kbd"
 import HintRow from "./hint-row"
@@ -33,6 +33,7 @@ export default function PromptInput(props: PromptInputProps) {
   const [atPosition, setAtPosition] = createSignal<number | null>(null)
   const [isDragging, setIsDragging] = createSignal(false)
   const [ignoredAtPositions, setIgnoredAtPositions] = createSignal<Set<number>>(new Set())
+  const [pasteCount, setPasteCount] = createSignal(0)
   let textareaRef: HTMLTextAreaElement | undefined
   let containerRef: HTMLDivElement | undefined
 
@@ -53,6 +54,30 @@ export default function PromptInput(props: PromptInputProps) {
         textareaRef.style.height = "auto"
         textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
       }
+    }
+  }
+
+  function handlePaste(e: ClipboardEvent) {
+    const pastedText = e.clipboardData?.getData("text/plain")
+    if (!pastedText) return
+
+    const lineCount = pastedText.split("\n").length
+    const charCount = pastedText.length
+
+    const isLongPaste = charCount > 150 || lineCount > 3
+
+    if (isLongPaste) {
+      e.preventDefault()
+
+      const count = pasteCount() + 1
+      setPasteCount(count)
+
+      const summary = lineCount > 1 ? `${lineCount} lines` : `${charCount} chars`
+      const display = `pasted #${count} (${summary})`
+      const filename = `paste-${count}.txt`
+
+      const attachment = createTextAttachment(pastedText, display, filename)
+      addAttachment(props.instanceId, props.sessionId, attachment)
     }
   }
 
@@ -121,6 +146,7 @@ export default function PromptInput(props: PromptInputProps) {
       setPrompt("")
       clearAttachments(props.instanceId, props.sessionId)
       setIgnoredAtPositions(new Set<number>())
+      setPasteCount(0)
 
       if (textareaRef) {
         textareaRef.style.height = "auto"
@@ -293,15 +319,29 @@ export default function PromptInput(props: PromptInputProps) {
               <For each={attachments()}>
                 {(attachment) => (
                   <div class="inline-flex items-center gap-1.5 rounded-md bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-500/20">
-                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <span>{attachment.filename}</span>
+                    <Show
+                      when={attachment.source.type === "text"}
+                      fallback={
+                        <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                      }
+                    >
+                      <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
+                      </svg>
+                    </Show>
+                    <span>{attachment.source.type === "text" ? attachment.display : attachment.filename}</span>
                     <button
                       onClick={() => handleRemoveAttachment(attachment.id)}
                       class="ml-0.5 flex h-4 w-4 items-center justify-center rounded hover:bg-blue-100 dark:hover:bg-blue-500/20"
@@ -328,6 +368,7 @@ export default function PromptInput(props: PromptInputProps) {
             value={prompt()}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             disabled={sending() || props.disabled}
