@@ -38,4 +38,5 @@ export interface Instance {
   logs: LogEntry[]
   metadata?: InstanceMetadata
   binaryPath?: string
+  environmentVariables?: Record<string, string>
 }

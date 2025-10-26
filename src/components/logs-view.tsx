@@ -82,6 +82,27 @@ const LogsView: Component<LogsViewProps> = (props) => {
         <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Server Logs</h3>
       </div>
 
+      <Show when={instance()?.environmentVariables && Object.keys(instance()?.environmentVariables!).length > 0}>
+        <div class="px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800">
+          <div class="text-xs font-medium text-blue-800 dark:text-blue-200 mb-2">
+            Environment Variables ({Object.keys(instance()?.environmentVariables!).length})
+          </div>
+          <div class="space-y-1">
+            <For each={Object.entries(instance()?.environmentVariables!)}>
+              {([key, value]) => (
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="font-mono font-medium text-blue-800 dark:text-blue-200 min-w-0 flex-1">{key}</span>
+                  <span class="text-blue-600 dark:text-blue-400">=</span>
+                  <span class="font-mono text-blue-700 dark:text-blue-300 min-w-0 flex-1" title={value}>
+                    {value}
+                  </span>
+                </div>
+              )}
+            </For>
+          </div>
+        </div>
+      </Show>
+
       <div
         ref={scrollRef}
         onScroll={handleScroll}

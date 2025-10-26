@@ -3,7 +3,7 @@ import type { Instance, LogEntry } from "../types/instance"
 import { sdkManager } from "../lib/sdk-manager"
 import { sseManager } from "../lib/sse-manager"
 import { fetchSessions, fetchAgents, fetchProviders } from "./sessions"
-import { preferences } from "./preferences"
+import { preferences, updateLastUsedBinary } from "./preferences"
 
 const [instances, setInstances] = createSignal<Map<string, Instance>>(new Map())
 const [activeInstanceId, setActiveInstanceId] = createSignal<string | null>(null)
@@ -52,9 +52,15 @@ async function createInstance(folder: string, binaryPath?: string): Promise<stri
     status: "starting",
     client: null,
     logs: [],
+    environmentVariables: preferences().environmentVariables,
   }
 
   addInstance(instance)
+
+  // Update last used binary
+  if (binaryPath) {
+    updateLastUsedBinary(binaryPath)
+  }
 
   try {
     const {

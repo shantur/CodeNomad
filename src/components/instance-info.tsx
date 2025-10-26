@@ -142,6 +142,28 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
           </div>
         </Show>
 
+        <Show when={props.instance.environmentVariables && Object.keys(props.instance.environmentVariables).length > 0}>
+          <div>
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+              Environment Variables ({Object.keys(props.instance.environmentVariables!).length})
+            </div>
+            <div class="space-y-1">
+              <For each={Object.entries(props.instance.environmentVariables!)}>
+                {([key, value]) => (
+                  <div class="flex items-center gap-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700">
+                    <span class="text-xs text-gray-900 dark:text-gray-100 font-mono font-medium flex-1" title={key}>
+                      {key}
+                    </span>
+                    <span class="text-xs text-gray-600 dark:text-gray-400 font-mono flex-1" title={value}>
+                      {value}
+                    </span>
+                  </div>
+                )}
+              </For>
+            </div>
+          </div>
+        </Show>
+
         <Show when={!isLoadingMetadata() && mcpServers().length > 0}>
           <div>
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">

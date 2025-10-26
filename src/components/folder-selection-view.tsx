@@ -1,6 +1,6 @@
-import { Component, createSignal, Show, For, onMount, onCleanup } from "solid-js"
+import { Component, createSignal, Show, For, onMount, onCleanup, createEffect } from "solid-js"
 import { Folder, Clock, Trash2, FolderPlus, Settings, ChevronDown, ChevronUp } from "lucide-solid"
-import { recentFolders, removeRecentFolder, preferences } from "../stores/preferences"
+import { recentFolders, removeRecentFolder, preferences, updateLastUsedBinary } from "../stores/preferences"
 import OpenCodeBinarySelector from "./opencode-binary-selector"
 import EnvironmentVariablesEditor from "./environment-variables-editor"
 
@@ -16,6 +16,14 @@ const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
   const [selectedBinary, setSelectedBinary] = createSignal(preferences().lastUsedBinary || "opencode")
 
   const folders = () => recentFolders()
+
+  // Update selected binary when preferences change
+  createEffect(() => {
+    const lastUsed = preferences().lastUsedBinary
+    if (lastUsed && lastUsed !== selectedBinary()) {
+      setSelectedBinary(lastUsed)
+    }
+  })
 
   function scrollToIndex(index: number) {
     const element = document.querySelector(`[data-folder-index="${index}"]`)
@@ -115,11 +123,17 @@ const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
   }
 
   function handleFolderSelect(path: string) {
+    updateLastUsedBinary(selectedBinary())
     props.onSelectFolder(path, selectedBinary())
   }
 
   function handleBrowse() {
+    updateLastUsedBinary(selectedBinary())
     props.onSelectFolder(undefined, selectedBinary())
+  }
+
+  function handleBinaryChange(binary: string) {
+    setSelectedBinary(binary)
   }
 
   function handleRemove(path: string, e?: Event) {
@@ -271,7 +285,7 @@ const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
                     <div class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">OpenCode Binary</div>
                     <OpenCodeBinarySelector
                       selectedBinary={selectedBinary()}
-                      onBinaryChange={setSelectedBinary}
+                      onBinaryChange={handleBinaryChange}
                       disabled={props.isLoading}
                     />
                   </div>

@@ -57,15 +57,29 @@ class ProcessManager {
     environmentVariables?: Record<string, string>,
   ): Promise<ProcessInfo> {
     this.validateFolder(folder)
-    const actualBinaryPath = binaryPath ? this.validateCustomBinary(binaryPath) : this.validateOpenCodeBinary()
+    const actualBinaryPath =
+      binaryPath && binaryPath !== "opencode" ? this.validateCustomBinary(binaryPath) : this.validateOpenCodeBinary()
 
-    this.sendLog(instanceId, "info", `Starting OpenCode server for ${folder} using ${actualBinaryPath}...`)
+    this.sendLog(
+      instanceId,
+      "info",
+      `Starting OpenCode server for ${folder} using ${binaryPath || "opencode"} (${actualBinaryPath})...`,
+    )
 
     // Merge environment variables with process environment
     const env = { ...process.env }
     if (environmentVariables) {
       Object.assign(env, environmentVariables)
-      this.sendLog(instanceId, "info", `Using ${Object.keys(environmentVariables).length} custom environment variables`)
+      this.sendLog(
+        instanceId,
+        "info",
+        `Using ${Object.keys(environmentVariables).length} custom environment variables:`,
+      )
+
+      // Log each environment variable
+      for (const [key, value] of Object.entries(environmentVariables)) {
+        this.sendLog(instanceId, "info", `  ${key}=${value}`)
+      }
     }
 
     return new Promise((resolve, reject) => {

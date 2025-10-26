@@ -96,8 +96,13 @@ function updateLastUsedBinary(path: string): void {
   updatePreferences({ lastUsedBinary: path })
 
   const binaries = opencodeBinaries()
-  const binary = binaries.find((b) => b.path === path)
-  if (binary) {
+  let binary = binaries.find((b) => b.path === path)
+
+  // If binary not found in list, add it (for system PATH "opencode")
+  if (!binary) {
+    addOpenCodeBinary(path)
+    binary = { path, lastUsed: Date.now() }
+  } else {
     binary.lastUsed = Date.now()
     // Move to front
     const sorted = [binary, ...binaries.filter((b) => b.path !== path)]
