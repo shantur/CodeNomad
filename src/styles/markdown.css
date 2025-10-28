@@ -1,0 +1,217 @@
+/* Markdown & Code Block Styles */
+
+/* Prose styles for markdown content */
+.prose {
+  color: var(--text-primary);
+}
+
+.prose code {
+  background-color: var(--surface-secondary);
+  color: var(--text-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: var(--font-family-mono);
+}
+
+.prose pre {
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+  overflow: visible;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: 0.875em;
+}
+
+.prose a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.prose a:hover {
+  text-decoration: underline;
+}
+
+.prose blockquote {
+  border-left: 4px solid var(--border-base);
+  padding-left: 16px;
+  font-style: italic;
+  color: var(--text-secondary);
+  margin: 12px 0;
+}
+
+.prose ul,
+.prose ol {
+  margin: 8px 0;
+  padding-left: 24px;
+}
+
+.prose ul {
+  list-style-type: disc;
+}
+
+.prose ol {
+  list-style-type: decimal;
+}
+
+.prose li {
+  margin: 4px 0;
+}
+
+.prose h1 {
+  font-size: 1.5em;
+  font-weight: var(--font-weight-bold);
+  margin: 16px 0 12px 0;
+  line-height: var(--line-height-tight);
+}
+
+.prose h2 {
+  font-size: 1.25em;
+  font-weight: var(--font-weight-bold);
+  margin: 14px 0 10px 0;
+  line-height: var(--line-height-tight);
+}
+
+.prose h3 {
+  font-size: 1.1em;
+  font-weight: var(--font-weight-semibold);
+  margin: 12px 0 8px 0;
+  line-height: var(--line-height-tight);
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 0.9em;
+}
+
+.prose th {
+  border: 1px solid var(--border-base);
+  padding: 8px 12px;
+  background-color: var(--surface-secondary);
+  font-weight: var(--font-weight-semibold);
+  text-align: left;
+}
+
+.prose td {
+  border: 1px solid var(--border-base);
+  padding: 8px 12px;
+}
+
+.prose p {
+  margin: 8px 0;
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border-base);
+  margin: 16px 0;
+}
+
+/* Code block styles */
+.markdown-code-block {
+  position: relative;
+  margin: 12px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-base);
+}
+
+.code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background-color: var(--surface-secondary);
+  border-bottom: 1px solid var(--border-base);
+}
+
+.code-block-language {
+  font-size: var(--font-size-xs);
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+}
+
+.code-block-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  font-size: var(--font-size-xs);
+  background-color: transparent;
+  border: 1px solid var(--border-base);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 150ms ease;
+  margin-left: auto;
+}
+
+.code-block-copy:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--border-base);
+}
+
+.code-block-copy .copy-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.code-block-copy .copy-text {
+  font-family: var(--font-family-mono);
+}
+
+.markdown-code-block pre {
+  margin: 0 !important;
+  padding: 12px !important;
+  overflow-x: auto;
+  background-color: transparent !important;
+}
+
+.markdown-code-block code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: 13px !important;
+  line-height: var(--line-height-relaxed);
+}
+
+.code-block-inline {
+  position: relative;
+  margin: 8px 0;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--surface-muted);
+  border: 1px solid var(--border-base);
+}
+
+.code-block-inline .code-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background-color: var(--surface-secondary);
+  border-bottom: 1px solid var(--border-base);
+}
+
+.code-block-inline pre {
+  margin: 0 !important;
+  padding: 10px !important;
+  overflow-x: auto;
+  background-color: transparent !important;
+}
+
+.code-block-inline code {
+  background: transparent !important;
+  padding: 0 !important;
+  font-size: var(--font-size-xs) !important;
+  line-height: var(--line-height-normal);
+}

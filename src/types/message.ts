@@ -1,6 +1,7 @@
 export interface RenderCache {
   text: string
   html: string
+  theme?: string
 }
 
 export interface MessageDisplayParts {
