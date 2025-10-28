@@ -1,6 +1,83 @@
 /* Reusable component utilities using tokens */
 
+/* Base token utility helpers */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+.text-inverted {
+  color: var(--text-inverted);
+}
+
+.text-accent {
+  color: var(--accent-primary);
+}
+
+.bg-surface-base {
+  background-color: var(--surface-base);
+}
+
+.bg-surface-secondary {
+  background-color: var(--surface-secondary);
+}
+
+.bg-surface-muted {
+  background-color: var(--surface-muted);
+}
+
+.border-base {
+  border-color: var(--border-base);
+}
+
+.icon-muted {
+  color: var(--text-muted);
+}
+
+.icon-accent {
+  color: var(--accent-primary);
+}
+
+.icon-danger-hover:hover {
+  color: var(--status-error);
+}
+
+.icon-accent-hover:hover {
+  color: var(--accent-primary);
+}
+
+.ring-accent-inset {
+  box-shadow: inset 0 0 0 2px var(--accent-primary);
+}
+
+.button-primary {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-medium transition-colors;
+  background-color: var(--accent-primary);
+  color: var(--text-inverted);
+}
+
+.button-primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.button-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--surface-base), 0 0 0 4px var(--accent-primary);
+}
+
+.button-primary:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
 /* Message item base styles */
+
 .message-item-base {
   @apply flex flex-col gap-2 p-3 rounded-lg w-full;
 }
@@ -960,16 +1037,26 @@
   background-color: var(--surface-hover);
 }
 
-.selector-option-highlighted {
+.selector-option[data-highlighted],
+.selector-option[data-focused] {
   background-color: rgba(0, 102, 255, 0.1);
 }
 
-[data-theme="dark"] .selector-option-highlighted {
+[data-theme="dark"] .selector-option[data-highlighted],
+[data-theme="dark"] .selector-option[data-focused] {
   background-color: rgba(0, 128, 255, 0.2);
+}
+
+.selector-option[data-selected] {
+  background-color: rgba(0, 102, 255, 0.15);
 }
 
 .selector-option-selected {
   background-color: rgba(0, 102, 255, 0.15);
+}
+
+[data-theme="dark"] .selector-option[data-selected] {
+  background-color: rgba(0, 128, 255, 0.25);
 }
 
 [data-theme="dark"] .selector-option-selected {
@@ -988,6 +1075,28 @@
 .selector-option-description {
   @apply text-xs;
   color: var(--text-muted);
+}
+
+.selector-option .remove-binary-button {
+  opacity: 0;
+}
+
+.selector-option:hover .remove-binary-button {
+  opacity: 1;
+}
+
+.remove-binary-button {
+  @apply p-1 rounded transition-all;
+  color: var(--text-muted);
+}
+
+.remove-binary-button:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--status-error);
+}
+
+[data-theme="dark"] .remove-binary-button:hover {
+  background-color: rgba(239, 68, 68, 0.2);
 }
 
 .selector-option-indicator {
@@ -1104,6 +1213,12 @@
 
 .selector-button-secondary:disabled {
   @apply opacity-50 cursor-not-allowed;
+}
+
+.focus-ring-accent:focus {
+  outline: none;
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--accent-primary);
 }
 
 .selector-empty-state {

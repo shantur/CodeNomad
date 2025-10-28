@@ -64,19 +64,17 @@ export default function AgentSelector(props: AgentSelectorProps) {
         itemComponent={(itemProps) => (
           <Select.Item
             item={itemProps.item}
-            class="px-3 py-2 cursor-pointer rounded outline-none transition-colors hover:bg-gray-100 focus:bg-gray-100 dark:hover:bg-gray-800 dark:focus:bg-gray-800"
+            class="selector-option"
           >
-            <div class="flex flex-col">
-              <Select.ItemLabel class="font-medium text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <div class="flex flex-col flex-1 min-w-0">
+              <Select.ItemLabel class="selector-option-label flex items-center gap-2">
                 <span>{itemProps.item.rawValue.name}</span>
                 <Show when={itemProps.item.rawValue.mode === "subagent"}>
-                  <span class="neutral-badge">
-                    subagent
-                  </span>
+                  <span class="neutral-badge">subagent</span>
                 </Show>
               </Select.ItemLabel>
               <Show when={itemProps.item.rawValue.description}>
-                <Select.ItemDescription class="text-xs text-gray-600 dark:text-gray-300">
+                <Select.ItemDescription class="selector-option-description">
                   {itemProps.item.rawValue.description.length > 50
                     ? itemProps.item.rawValue.description.slice(0, 50) + "..."
                     : itemProps.item.rawValue.description}
@@ -92,11 +90,15 @@ export default function AgentSelector(props: AgentSelectorProps) {
         >
           <Select.Value<Agent>>
             {(state) => (
-              <span class="text-gray-700 dark:text-gray-200">Agent: {state.selectedOption()?.name ?? "None"}</span>
+              <div class="selector-trigger-label">
+                <span class="selector-trigger-primary">
+                  Agent: {state.selectedOption()?.name ?? "None"}
+                </span>
+              </div>
             )}
           </Select.Value>
-          <Select.Icon>
-            <ChevronDown class="w-3 h-3 text-gray-500 dark:text-gray-300" />
+          <Select.Icon class="selector-trigger-icon">
+            <ChevronDown class="w-3 h-3" />
           </Select.Icon>
         </Select.Trigger>
 
@@ -106,7 +108,7 @@ export default function AgentSelector(props: AgentSelectorProps) {
           </Select.Content>
         </Select.Portal>
       </Select>
-      <span class="text-xs text-gray-400 dark:text-gray-500">
+      <span class="hint">
         <Kbd shortcut="cmd+shift+a" />
       </span>
     </div>

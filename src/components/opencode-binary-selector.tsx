@@ -354,10 +354,10 @@ const OpenCodeBinarySelector: Component<OpenCodeBinarySelectorProps> = (props) =
                         </div>
                         <button
                           onClick={(e) => handleRemoveBinary(binary.path, e)}
-                          class="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-all"
+                          class="remove-binary-button"
                           title="Remove binary"
                         >
-                          <Trash2 class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400" />
+                          <Trash2 class="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

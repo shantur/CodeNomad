@@ -3,6 +3,7 @@ import type { Instance } from "../types/instance"
 import { getParentSessions, createSession, setActiveParentSession, agents } from "../stores/sessions"
 import InstanceInfo from "./instance-info"
 
+
 interface InstanceWelcomeViewProps {
   instance: Instance
 }
@@ -146,14 +147,14 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
   }
 
   return (
-    <div class="flex-1 flex flex-col overflow-hidden bg-gray-50 dark:bg-gray-950">
+    <div class="flex-1 flex flex-col overflow-hidden bg-surface-secondary">
       <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-auto">
         <div class="flex-1 flex flex-col gap-4 min-h-0">
           <Show
             when={parentSessions().length > 0}
             fallback={
-              <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6 text-center flex-shrink-0">
-                <div class="text-gray-400 dark:text-gray-500 mb-2">
+              <div class="panel panel-empty-state flex-shrink-0">
+                <div class="panel-empty-state-icon">
                   <svg class="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
@@ -163,83 +164,81 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
                     />
                   </svg>
                 </div>
-                <p class="text-gray-600 dark:text-gray-200 font-medium text-sm">No Previous Sessions</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Create a new session below to get started</p>
+                <p class="panel-empty-state-title">No Previous Sessions</p>
+                <p class="panel-empty-state-description">Create a new session below to get started</p>
               </div>
             }
           >
-            <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
-              <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Resume Session</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            <div class="panel flex-shrink-0">
+              <div class="panel-header">
+                <h2 class="panel-title">Resume Session</h2>
+                <p class="panel-subtitle">
                   {parentSessions().length} {parentSessions().length === 1 ? "session" : "sessions"} available
                 </p>
               </div>
-              <div class="max-h-[400px] overflow-y-auto">
+              <div class="panel-list">
                 <For each={parentSessions()}>
                   {(session, index) => (
-                    <button
-                      data-session-index={index()}
-                      class="w-full text-left px-4 py-2.5 border-b border-gray-100 dark:border-gray-800 transition-all group focus:outline-none hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                      classList={{
-                        "bg-blue-100 dark:bg-blue-900/50 ring-2 ring-blue-500 dark:ring-blue-400 ring-inset":
-                          focusMode() === "sessions" && selectedIndex() === index(),
-                      }}
-                      onClick={() => handleSessionSelect(session.id)}
-                      onMouseEnter={() => {
-                        setFocusMode("sessions")
-                        setSelectedIndex(index())
-                      }}
-                    >
-                      <div class="flex items-center justify-between gap-3">
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2">
-                            <span
-                              class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-700 dark:group-hover:text-blue-300 truncate"
-                              classList={{
-                                "text-blue-700 dark:text-blue-300":
-                                  focusMode() === "sessions" && selectedIndex() === index(),
-                              }}
-                            >
-                              {session.title || "Untitled Session"}
-                            </span>
+                    <div class="panel-list-item">
+                      <button
+                        data-session-index={index()}
+                        class="panel-list-item-content group"
+                        classList={{
+                          "panel-list-item-highlight ring-accent-inset":
+                            focusMode() === "sessions" && selectedIndex() === index(),
+                        }}
+                        onClick={() => handleSessionSelect(session.id)}
+                        onMouseEnter={() => {
+                          setFocusMode("sessions")
+                          setSelectedIndex(index())
+                        }}
+                      >
+                        <div class="flex items-center justify-between gap-3 w-full">
+                          <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                              <span
+                                class="text-sm font-medium text-primary truncate transition-colors"
+                                classList={{
+                                  "text-accent":
+                                    focusMode() === "sessions" && selectedIndex() === index(),
+                                }}
+                              >
+                                {session.title || "Untitled Session"}
+                              </span>
+                            </div>
+                            <div class="flex items-center gap-3 text-xs text-muted mt-0.5">
+                              <span>{session.agent}</span>
+                              <span>•</span>
+                              <span>{formatRelativeTime(session.time.updated)}</span>
+                            </div>
                           </div>
-                          <div class="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                            <span>{session.agent}</span>
-                            <span>•</span>
-                            <span>{formatRelativeTime(session.time.updated)}</span>
-                          </div>
+                          <Show when={focusMode() === "sessions" && selectedIndex() === index()}>
+                            <kbd class="kbd flex-shrink-0">↵</kbd>
+                          </Show>
                         </div>
-                        <Show when={focusMode() === "sessions" && selectedIndex() === index()}>
-                          <kbd class="kbd flex-shrink-0">
-                            ↵
-                          </kbd>
-                        </Show>
-                      </div>
-                    </button>
+                      </button>
+                    </div>
                   )}
                 </For>
               </div>
             </div>
           </Show>
 
-          <div class="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex-shrink-0">
-            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-              <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">Start New Session</h2>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                Create a fresh conversation with your chosen agent
-              </p>
+          <div class="panel flex-shrink-0">
+            <div class="panel-header">
+              <h2 class="panel-title">Start New Session</h2>
+              <p class="panel-subtitle">Create a fresh conversation with your chosen agent</p>
             </div>
-            <div class="p-4">
+            <div class="panel-body">
               <Show
                 when={agentList().length > 0}
-                fallback={<div class="text-sm text-gray-500 dark:text-gray-400">Loading agents...</div>}
+                fallback={<div class="text-sm text-muted">Loading agents...</div>}
               >
                 <div class="space-y-3">
                   <div>
-                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">Agent</label>
+                    <label class="block text-xs font-medium text-secondary mb-1.5">Agent</label>
                     <select
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 dark:text-gray-100 hover:border-gray-400 dark:hover:border-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      class="selector-input w-full"
                       value={selectedAgent()}
                       onChange={(e) => setSelectedAgent(e.currentTarget.value)}
                     >
@@ -255,14 +254,15 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
                   </div>
 
                   <button
-                    class="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-500 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-all font-medium flex items-center justify-between text-sm relative group focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    type="button"
+                    class="selector-button selector-button-primary w-full flex items-center justify-between gap-2 font-medium"
                     onClick={handleNewSession}
                     disabled={isCreating() || agentList().length === 0}
                   >
                     <Show
                       when={!isCreating()}
                       fallback={
-                        <>
+                        <div class="flex items-center gap-2 w-full justify-center text-sm">
                           <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                             <path
@@ -272,18 +272,16 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
                             />
                           </svg>
                           Creating...
-                        </>
+                        </div>
                       }
                     >
-                      <div class="flex items-center gap-2 flex-1 justify-center">
+                      <div class="flex items-center gap-2 flex-1 justify-center text-sm">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
                         <span>Create Session</span>
                       </div>
-                      <kbd class="kbd flex-shrink-0">
-                        Cmd+Enter
-                      </kbd>
+                      <kbd class="kbd flex-shrink-0">Cmd+Enter</kbd>
                     </Show>
                   </button>
                 </div>
@@ -299,8 +297,8 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
         </div>
       </div>
 
-      <div class="px-4 py-2 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-        <div class="flex items-center justify-center flex-wrap gap-3 text-xs text-gray-500 dark:text-gray-400">
+      <div class="panel-footer">
+        <div class="panel-footer-hints">
           <div class="flex items-center gap-1.5">
             <kbd class="kbd">↑</kbd>
             <kbd class="kbd">↓</kbd>
@@ -331,3 +329,4 @@ const InstanceWelcomeView: Component<InstanceWelcomeViewProps> = (props) => {
 }
 
 export default InstanceWelcomeView
+

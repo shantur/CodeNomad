@@ -81,8 +81,8 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
       </div>
       <div class="panel-body space-y-3">
         <div>
-          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">Folder</div>
-          <div class="text-xs text-gray-900 dark:text-gray-100 font-mono break-all px-2 py-1.5 rounded border" style="background-color: var(--surface-secondary); border-color: var(--border-base); color: var(--text-primary);">
+          <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1">Folder</div>
+          <div class="text-xs text-primary font-mono break-all px-2 py-1.5 rounded border bg-surface-secondary border-base">
             {props.instance.folder}
           </div>
         </div>
@@ -91,22 +91,23 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
           {(project) => (
             <>
               <div>
-                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1">
                   Project
                 </div>
-                <div class="text-xs font-mono px-2 py-1.5 rounded border truncate" style="background-color: var(--surface-secondary); border-color: var(--border-base); color: var(--text-primary);">
+                <div class="text-xs font-mono px-2 py-1.5 rounded border truncate bg-surface-secondary border-base text-primary">
                   {project().id}
                 </div>
               </div>
 
               <Show when={project().vcs}>
                 <div>
-                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                  <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1">
                     Version Control
                   </div>
-                  <div class="flex items-center gap-2 text-xs text-gray-900 dark:text-gray-100">
+                  <div class="flex items-center gap-2 text-xs text-primary">
                     <svg
-                      class="w-3.5 h-3.5 text-orange-600 dark:text-orange-500"
+                      class="w-3.5 h-3.5"
+                      style="color: var(--status-warning);"
                       fill="currentColor"
                       viewBox="0 0 24 24"
                     >
@@ -122,10 +123,10 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
 
         <Show when={metadata()?.version}>
           <div>
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+            <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1">
               OpenCode Version
             </div>
-            <div class="text-xs px-2 py-1.5 rounded border" style="background-color: var(--surface-secondary); border-color: var(--border-base); color: var(--text-primary);">
+            <div class="text-xs px-2 py-1.5 rounded border bg-surface-secondary border-base text-primary">
               v{metadata()?.version}
             </div>
           </div>
@@ -133,10 +134,10 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
 
         <Show when={props.instance.binaryPath}>
           <div>
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+            <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1">
               Binary Path
             </div>
-            <div class="text-xs font-mono break-all px-2 py-1.5 rounded border" style="background-color: var(--surface-secondary); border-color: var(--border-base); color: var(--text-primary);">
+            <div class="text-xs font-mono break-all px-2 py-1.5 rounded border bg-surface-secondary border-base text-primary">
               {props.instance.binaryPath}
             </div>
           </div>
@@ -144,17 +145,17 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
 
         <Show when={props.instance.environmentVariables && Object.keys(props.instance.environmentVariables).length > 0}>
           <div>
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+            <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
               Environment Variables ({Object.keys(props.instance.environmentVariables!).length})
             </div>
             <div class="space-y-1">
               <For each={Object.entries(props.instance.environmentVariables!)}>
                 {([key, value]) => (
-                  <div class="flex items-center gap-2 px-2 py-1.5 rounded border" style="background-color: var(--surface-secondary); border-color: var(--border-base);">
-                    <span class="text-xs font-mono font-medium flex-1" title={key} style="color: var(--text-primary);">
+                  <div class="flex items-center gap-2 px-2 py-1.5 rounded border bg-surface-secondary border-base">
+                    <span class="text-xs font-mono font-medium flex-1 text-primary" title={key}>
                       {key}
                     </span>
-                    <span class="text-xs font-mono flex-1" title={value} style="color: var(--text-secondary);">
+                    <span class="text-xs font-mono flex-1 text-secondary" title={value}>
                       {value}
                     </span>
                   </div>
@@ -166,27 +167,23 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
 
         <Show when={!isLoadingMetadata() && mcpServers().length > 0}>
           <div>
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+            <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">
               MCP Servers
             </div>
             <div class="space-y-1.5">
               <For each={mcpServers()}>
                 {(server) => (
-                  <div class="flex items-center justify-between px-2 py-1.5 rounded border" style="background-color: var(--surface-secondary); border-color: var(--border-base);">
-                    <span class="text-xs text-gray-900 dark:text-gray-100 font-medium truncate">{server.name}</span>
+                  <div class="flex items-center justify-between px-2 py-1.5 rounded border bg-surface-secondary border-base">
+                    <span class="text-xs text-primary font-medium truncate">{server.name}</span>
                     <div class="flex items-center gap-1.5 flex-shrink-0">
-                      <Show
-                        when={server.status === "running"}
-                        fallback={
-                          <Show
-                            when={server.status === "error"}
-                            fallback={<div class="w-1.5 h-1.5 rounded-full bg-gray-400" />}
-                          >
-                            <div class="w-1.5 h-1.5 rounded-full bg-red-500" />
-                          </Show>
-                        }
-                      >
-                        <div class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <Show when={server.status === "running"}>
+                        <div class="status-dot ready animate-pulse" />
+                      </Show>
+                      <Show when={server.status === "error"}>
+                        <div class="status-dot error" />
+                      </Show>
+                      <Show when={server.status === "stopped"}>
+                        <div class="status-dot stopped" />
                       </Show>
                     </div>
                   </div>
@@ -197,9 +194,9 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
         </Show>
 
         <Show when={isLoadingMetadata()}>
-          <div class="text-xs text-gray-500 dark:text-gray-400 py-1">
+          <div class="text-xs text-muted py-1">
             <div class="flex items-center gap-1.5">
-              <svg class="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+              <svg class="animate-spin h-3 w-3 icon-muted" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
                 <path
                   class="opacity-75"
@@ -213,23 +210,23 @@ const InstanceInfo: Component<InstanceInfoProps> = (props) => {
         </Show>
 
         <div>
-          <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Server</div>
+          <div class="text-xs font-medium text-muted uppercase tracking-wide mb-1.5">Server</div>
           <div class="space-y-1 text-xs">
             <div class="flex justify-between items-center">
-              <span class="text-gray-600 dark:text-gray-400">Port:</span>
-              <span class="text-gray-900 dark:text-gray-100 font-mono">{props.instance.port}</span>
+              <span class="text-secondary">Port:</span>
+              <span class="text-primary font-mono">{props.instance.port}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600 dark:text-gray-400">PID:</span>
-              <span class="text-gray-900 dark:text-gray-100 font-mono">{props.instance.pid}</span>
+              <span class="text-secondary">PID:</span>
+              <span class="text-primary font-mono">{props.instance.pid}</span>
             </div>
             <div class="flex justify-between items-center">
-              <span class="text-gray-600 dark:text-gray-400">Status:</span>
+              <span class="text-secondary">Status:</span>
               <span
                 class={`status-badge ${props.instance.status}`}
               >
                 <div
-                  class={`status-dot ${props.instance.status} ${props.instance.status === "ready" || props.instance.status === "starting" ? "animate-pulse" : ""}`}
+                  class={`status-dot ${props.instance.status === "ready" ? "ready" : props.instance.status === "starting" ? "starting" : props.instance.status === "error" ? "error" : "stopped"} ${props.instance.status === "ready" || props.instance.status === "starting" ? "animate-pulse" : ""}`}
                 />
                 {props.instance.status}
               </span>

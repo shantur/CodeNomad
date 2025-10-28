@@ -6,7 +6,7 @@ interface HintRowProps {
 }
 
 const HintRow: Component<HintRowProps> = (props) => {
-  return <span class={`text-xs text-gray-500 dark:text-gray-400 ${props.class || ""}`}>{props.children}</span>
+  return <span class={`text-xs text-muted ${props.class || ""}`}>{props.children}</span>
 }
 
 export default HintRow

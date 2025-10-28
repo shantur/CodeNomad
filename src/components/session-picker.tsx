@@ -64,39 +64,38 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
   return (
     <Dialog open={props.open} onOpenChange={(open) => !open && handleCancel()}>
       <Dialog.Portal>
-        <Dialog.Overlay class="fixed inset-0 bg-black/50 z-50" />
+        <Dialog.Overlay class="modal-overlay" />
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
           <Dialog.Content class="modal-surface w-full max-w-lg p-6">
-            <Dialog.Title class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+            <Dialog.Title class="text-xl font-semibold text-primary mb-4">
               OpenCode • {instance()?.folder.split("/").pop()}
             </Dialog.Title>
 
             <div class="space-y-6">
               <Show
                 when={parentSessions().length > 0}
-                fallback={
-                  <div class="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">No previous sessions</div>
-                }
+                fallback={<div class="text-center py-4 text-sm text-muted">No previous sessions</div>}
               >
                 <div>
-                  <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <h3 class="text-sm font-medium text-secondary mb-2">
                     Resume a session ({parentSessions().length}):
                   </h3>
                   <div class="space-y-1 max-h-[400px] overflow-y-auto">
                     <For each={parentSessions()}>
                       {(session) => (
                         <button
-                          class="w-full text-left px-3 py-2 rounded transition-colors group hover:bg-gray-100 dark:hover:bg-gray-800"
+                          type="button"
+                          class="selector-option w-full text-left"
                           onClick={() => handleSessionSelect(session.id)}
                         >
-                          <div class="flex justify-between items-start">
-                            <span class="text-sm text-gray-900 dark:text-gray-100 truncate flex-1">
+                          <div class="selector-option-content">
+                            <span class="selector-option-label truncate">
                               {session.title || "Untitled"}
                             </span>
-                            <span class="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
-                              {formatRelativeTime(session.time.updated)}
-                            </span>
                           </div>
+                          <span class="selector-badge-time flex-shrink-0">
+                            {formatRelativeTime(session.time.updated)}
+                          </span>
                         </button>
                       )}
                     </For>
@@ -106,22 +105,22 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
 
               <div class="relative">
                 <div class="absolute inset-0 flex items-center">
-                  <div class="w-full border-t border-gray-300 dark:border-gray-700" />
+                  <div class="w-full border-t border-base" />
                 </div>
                 <div class="relative flex justify-center text-sm">
-                  <span class="px-2" style="background-color: var(--surface-base); color: var(--text-muted);">or</span>
+                  <span class="px-2 bg-surface-base text-muted">or</span>
                 </div>
               </div>
 
               <div>
-                <h3 class="text-sm font-medium mb-2" style="color: var(--text-secondary);">Start new session:</h3>
+                <h3 class="text-sm font-medium text-secondary mb-2">Start new session:</h3>
                 <div class="space-y-3">
                   <Show
                     when={agentList().length > 0}
-                    fallback={<div class="text-sm text-gray-500 dark:text-gray-400">Loading agents...</div>}
+                    fallback={<div class="text-sm text-muted">Loading agents...</div>}
                   >
                     <select
-                      class="selector-input"
+                      class="selector-input w-full"
                       value={selectedAgent()}
                       onChange={(e) => setSelectedAgent(e.currentTarget.value)}
                     >
@@ -130,7 +129,7 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
                   </Show>
 
                   <button
-                    class="selector-button-primary w-full"
+                    class="selector-button selector-button-primary w-full"
                     onClick={handleNewSession}
                     disabled={isCreating() || agentList().length === 0}
                   >
@@ -142,7 +141,8 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
 
             <div class="mt-6 flex justify-end">
               <button
-                class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
+                type="button"
+                class="selector-button selector-button-secondary"
                 onClick={handleCancel}
               >
                 Cancel

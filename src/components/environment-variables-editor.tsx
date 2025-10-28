@@ -52,9 +52,9 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
   return (
     <div class="space-y-3">
       <div class="flex items-center gap-2 mb-3">
-        <Globe class="w-4 h-4 text-gray-500 dark:text-gray-400" />
-        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Environment Variables</span>
-        <span class="text-xs text-gray-500 dark:text-gray-400">
+        <Globe class="w-4 h-4 icon-muted" />
+        <span class="text-sm font-medium text-secondary">Environment Variables</span>
+        <span class="text-xs text-muted">
           ({entries().length} variable{entries().length !== 1 ? "s" : ""})
         </span>
       </div>
@@ -66,12 +66,12 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
             {([key, value]) => (
               <div class="flex items-center gap-2">
                 <div class="flex-1 flex items-center gap-2">
-                  <Key class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  <Key class="w-3.5 h-3.5 icon-muted flex-shrink-0" />
                   <input
                     type="text"
                     value={key}
                     disabled={props.disabled}
-                    class="flex-1 px-2.5 py-1.5 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    class="flex-1 px-2.5 py-1.5 text-sm bg-surface-secondary border border-base rounded text-muted cursor-not-allowed"
                     placeholder="Variable name"
                     title="Variable name (read-only)"
                   />
@@ -80,14 +80,14 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
                     value={value}
                     disabled={props.disabled}
                     onInput={(e) => handleUpdateVariable(key, e.currentTarget.value)}
-                    class="flex-1 px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="flex-1 px-2.5 py-1.5 text-sm bg-surface-base border border-base rounded text-primary focus-ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
                     placeholder="Variable value"
                   />
                 </div>
                 <button
                   onClick={() => handleRemoveVariable(key)}
                   disabled={props.disabled}
-                  class="p-1.5 text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  class="p-1.5 icon-muted icon-danger-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   title="Remove variable"
                 >
                   <Trash2 class="w-3.5 h-3.5" />
@@ -99,16 +99,16 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
       </Show>
 
       {/* Add new variable */}
-      <div class="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+      <div class="flex items-center gap-2 pt-2 border-t border-base">
         <div class="flex-1 flex items-center gap-2">
-          <Key class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+          <Key class="w-3.5 h-3.5 icon-muted flex-shrink-0" />
           <input
             type="text"
             value={newKey()}
             onInput={(e) => setNewKey(e.currentTarget.value)}
             onKeyPress={handleKeyPress}
             disabled={props.disabled}
-            class="flex-1 px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex-1 px-2.5 py-1.5 text-sm bg-surface-base border border-base rounded text-primary focus-ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Variable name"
           />
           <input
@@ -117,14 +117,14 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
             onInput={(e) => setNewValue(e.currentTarget.value)}
             onKeyPress={handleKeyPress}
             disabled={props.disabled}
-            class="flex-1 px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+            class="flex-1 px-2.5 py-1.5 text-sm bg-surface-base border border-base rounded text-primary focus-ring-accent disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Variable value"
           />
         </div>
         <button
           onClick={handleAddVariable}
           disabled={props.disabled || !newKey().trim()}
-          class="p-1.5 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          class="p-1.5 icon-muted icon-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           title="Add variable"
         >
           <Plus class="w-3.5 h-3.5" />
@@ -132,12 +132,12 @@ const EnvironmentVariablesEditor: Component<EnvironmentVariablesEditorProps> = (
       </div>
 
       <Show when={entries().length === 0}>
-        <div class="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+        <div class="text-xs text-muted text-center py-2">
           No environment variables configured. Add variables above to customize the OpenCode environment.
         </div>
       </Show>
 
-      <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+      <div class="text-xs text-muted mt-2">
         These variables will be available in the OpenCode environment when starting instances.
       </div>
     </div>
