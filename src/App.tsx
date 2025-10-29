@@ -5,7 +5,7 @@ import FolderSelectionView from "./components/folder-selection-view"
 import InstanceWelcomeView from "./components/instance-welcome-view"
 import CommandPalette from "./components/command-palette"
 import InstanceTabs from "./components/instance-tabs"
-import SessionTabs from "./components/session-tabs"
+import SessionList from "./components/session-list"
 import MessageStream from "./components/message-stream"
 import PromptInput from "./components/prompt-input"
 import InfoView from "./components/info-view"
@@ -813,42 +813,46 @@ const App: Component = () => {
               {(instance) => (
                 <>
                   <Show when={activeSessions().size > 0} fallback={<InstanceWelcomeView instance={instance()} />}>
-                    <SessionTabs
-                      instanceId={instance().id}
-                      sessions={activeSessions()}
-                      activeSessionId={activeSessionIdForInstance()}
-                      onSelect={(id) => setActiveSession(instance().id, id)}
-                      onClose={(id) => handleCloseSession(instance().id, id)}
-                      onNew={() => handleNewSession(instance().id)}
-                    />
+                    <div class="flex h-full">
+                      {/* Session List Sidebar */}
+                      <SessionList
+                        instanceId={instance().id}
+                        sessions={activeSessions()}
+                        activeSessionId={activeSessionIdForInstance()}
+                        onSelect={(id) => setActiveSession(instance().id, id)}
+                        onClose={(id) => handleCloseSession(instance().id, id)}
+                        onNew={() => handleNewSession(instance().id)}
+                      />
 
-                    <div class="content-area flex-1 overflow-hidden flex flex-col">
-                      <Show
-                        when={activeSessionIdForInstance() === "info"}
-                        fallback={
-                          <Show
-                            when={activeSessionIdForInstance()}
-                            fallback={
-                              <div class="flex items-center justify-center h-full">
-                                <div class="text-center text-gray-500 dark:text-gray-400">
-                                  <p class="mb-2">No session selected</p>
-                                  <p class="text-sm">Select a session to view messages</p>
+                      {/* Main Content Area */}
+                      <div class="content-area flex-1 overflow-hidden flex flex-col">
+                        <Show
+                          when={activeSessionIdForInstance() === "info"}
+                          fallback={
+                            <Show
+                              when={activeSessionIdForInstance()}
+                              fallback={
+                                <div class="flex items-center justify-center h-full">
+                                  <div class="text-center text-gray-500 dark:text-gray-400">
+                                    <p class="mb-2">No session selected</p>
+                                    <p class="text-sm">Select a session to view messages</p>
+                                  </div>
                                 </div>
-                              </div>
-                            }
-                          >
-                            <SessionView
-                              sessionId={activeSessionIdForInstance()!}
-                              activeSessions={activeSessions()}
-                              instanceId={activeInstance()!.id}
-                              instanceFolder={activeInstance()!.folder}
-                              escapeInDebounce={escapeInDebounce()}
-                            />
-                          </Show>
-                        }
-                      >
-                        <InfoView instanceId={instance().id} />
-                      </Show>
+                              }
+                            >
+                              <SessionView
+                                sessionId={activeSessionIdForInstance()!}
+                                activeSessions={activeSessions()}
+                                instanceId={activeInstance()!.id}
+                                instanceFolder={activeInstance()!.folder}
+                                escapeInDebounce={escapeInDebounce()}
+                              />
+                            </Show>
+                          }
+                        >
+                          <InfoView instanceId={instance().id} />
+                        </Show>
+                      </div>
                     </div>
                   </Show>
                 </>
