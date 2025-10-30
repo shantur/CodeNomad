@@ -294,42 +294,50 @@ export default function MessageStream(props: MessageStreamProps) {
       const version = message.version ?? 0
       const isQueued = message.type === "user" && (lastAssistantIndex === -1 || index > lastAssistantIndex)
 
-      const cacheEntry = messageItemCache.get(message.id)
-      if (
-        cacheEntry &&
-        cacheEntry.version === version &&
-        cacheEntry.showThinking === showThinking &&
-        cacheEntry.isQueued === isQueued &&
-        cacheEntry.messageInfo === messageInfo
-      ) {
-        cacheEntry.displayParts = displayParts
-        cacheEntry.version = version
-        cacheEntry.showThinking = showThinking
-        cacheEntry.isQueued = isQueued
-        cacheEntry.messageInfo = messageInfo
-        cacheEntry.item.message = message
-        cacheEntry.item.combinedParts = combinedParts
-        cacheEntry.item.isQueued = isQueued
-        cacheEntry.item.messageInfo = messageInfo
-        newMessageCache.set(message.id, cacheEntry)
-        items.push(cacheEntry.item)
-      } else {
-        const messageItem: MessageDisplayItem = {
-          type: "message",
-          message,
-          combinedParts,
-          isQueued,
-          messageInfo,
+      const hasRenderableContent =
+        message.type !== "assistant" ||
+        combinedParts.length > 0 ||
+        Boolean(messageInfo?.error) ||
+        message.status === "error"
+
+      if (hasRenderableContent) {
+        const cacheEntry = messageItemCache.get(message.id)
+        if (
+          cacheEntry &&
+          cacheEntry.version === version &&
+          cacheEntry.showThinking === showThinking &&
+          cacheEntry.isQueued === isQueued &&
+          cacheEntry.messageInfo === messageInfo
+        ) {
+          cacheEntry.displayParts = displayParts
+          cacheEntry.version = version
+          cacheEntry.showThinking = showThinking
+          cacheEntry.isQueued = isQueued
+          cacheEntry.messageInfo = messageInfo
+          cacheEntry.item.message = message
+          cacheEntry.item.combinedParts = combinedParts
+          cacheEntry.item.isQueued = isQueued
+          cacheEntry.item.messageInfo = messageInfo
+          newMessageCache.set(message.id, cacheEntry)
+          items.push(cacheEntry.item)
+        } else {
+          const messageItem: MessageDisplayItem = {
+            type: "message",
+            message,
+            combinedParts,
+            isQueued,
+            messageInfo,
+          }
+          newMessageCache.set(message.id, {
+            version,
+            showThinking,
+            isQueued,
+            messageInfo,
+            displayParts,
+            item: messageItem,
+          })
+          items.push(messageItem)
         }
-        newMessageCache.set(message.id, {
-          version,
-          showThinking,
-          isQueued,
-          messageInfo,
-          displayParts,
-          item: messageItem,
-        })
-        items.push(messageItem)
       }
 
       for (let toolIndex = 0; toolIndex < displayParts.tool.length; toolIndex++) {
