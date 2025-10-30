@@ -118,6 +118,11 @@ button.button-primary {
   @apply flex flex-col gap-2 p-3 rounded-lg w-full;
 }
 
+.assistant-message {
+  /* gap: 0.25rem; */
+  padding: 0.6rem 0.65rem;
+}
+
 /* Message state badges */
 .message-queued-badge {
   @apply inline-block font-bold px-3 py-1 rounded mb-3 text-xs tracking-wide;
@@ -605,6 +610,7 @@ button.button-primary {
   overflow-wrap: break-word;
   color: inherit;
 }
+
 
 .message-text pre {
   overflow-x: auto;

@@ -5,6 +5,7 @@ import type { TextPart } from "../types/message"
 interface MarkdownProps {
   part: TextPart
   isDark?: boolean
+  size?: "base" | "sm" | "tight"
 }
 
 export function Markdown(props: MarkdownProps) {
@@ -94,5 +95,17 @@ export function Markdown(props: MarkdownProps) {
     })
   })
 
-  return <div ref={containerRef} class="prose prose-sm dark:prose-invert max-w-none" innerHTML={html()} />
+  const proseClass = () => {
+    const classes = ["prose", "dark:prose-invert", "max-w-none"]
+
+    if (props.size === "tight") {
+      classes.push("prose-sm", "prose-tight")
+    } else if (props.size === "sm") {
+      classes.push("prose-sm")
+    }
+
+    return classes.join(" ")
+  }
+
+  return <div ref={containerRef} class={proseClass()} innerHTML={html()} />
 }

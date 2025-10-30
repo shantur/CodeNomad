@@ -8,13 +8,15 @@ import { partHasRenderableText } from "../types/message"
 
 interface MessagePartProps {
   part: any
+  messageType?: "user" | "assistant"
 }
-
 export default function MessagePart(props: MessagePartProps) {
   const { isDark } = useTheme()
   const partType = () => props.part?.type || ""
   const reasoningId = () => `reasoning-${props.part?.id || ""}`
   const isReasoningExpanded = () => isItemExpanded(reasoningId())
+  const isAssistantMessage = () => props.messageType === "assistant"
+  const textContainerClass = () => (isAssistantMessage() ? "message-text message-text-assistant" : "message-text")
 
   function handleReasoningClick(e: Event) {
     e.preventDefault()
@@ -25,8 +27,8 @@ export default function MessagePart(props: MessagePartProps) {
     <Switch>
       <Match when={partType() === "text"}>
         <Show when={!props.part.synthetic && partHasRenderableText(props.part)}>
-          <div class="message-text">
-            <Markdown part={props.part} isDark={isDark()} />
+          <div class={textContainerClass()}>
+            <Markdown part={props.part} isDark={isDark()} size={isAssistantMessage() ? "tight" : "base"} />
           </div>
         </Show>
       </Match>
@@ -48,8 +50,8 @@ export default function MessagePart(props: MessagePartProps) {
                 <span class="reasoning-label">Reasoning</span>
               </div>
               <Show when={isReasoningExpanded()}>
-                <div class="message-text mt-2">
-                  <Markdown part={props.part} isDark={isDark()} />
+                <div class={`${textContainerClass()} mt-2`}>
+                  <Markdown part={props.part} isDark={isDark()} size={isAssistantMessage() ? "tight" : "base"} />
                 </div>
               </Show>
             </div>

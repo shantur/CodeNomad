@@ -58,32 +58,33 @@ export default function MessageItem(props: MessageItemProps) {
     }
   }
 
+  const containerClass = () =>
+    isUser()
+      ? "message-item-base bg-[var(--message-user-bg)] border-l-4 border-[var(--message-user-border)]"
+      : "message-item-base assistant-message bg-[var(--message-assistant-bg)] border-l-4 border-[var(--message-assistant-border)]"
+
   return (
-    <div 
-      class={`message-item-base ${
-        isUser() 
-          ? "bg-[var(--message-user-bg)] border-l-4 border-[var(--message-user-border)]" 
-          : "bg-[var(--message-assistant-bg)] border-l-4 border-[var(--message-assistant-border)]"
-      }`}
-    >
-      <div class="flex justify-between items-center gap-3">
-        <span class="font-semibold text-sm text-[var(--text-muted)]">
+    <div class={containerClass()}>
+      <div class="flex justify-between items-center gap-2.5 pb-0.5">
+        <span class="font-semibold text-xs text-[var(--text-muted)]">
           {isUser() ? "You" : "Assistant"}
         </span>
-        <span class="text-xs text-[var(--text-muted)]">{timestamp()}</span>
-        <Show when={isUser() && props.onRevert}>
-          <button
-            class="bg-transparent border border-[var(--border-base)] text-[var(--text-muted)] cursor-pointer px-2 py-0.5 rounded text-base leading-none transition-all duration-200 flex items-center justify-center min-w-7 h-6 hover:bg-[var(--surface-hover)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] active:scale-95"
-            onClick={handleRevert}
-            title="Revert to this message"
-            aria-label="Revert to this message"
-          >
-            ↶
-          </button>
-        </Show>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] text-[var(--text-muted)]">{timestamp()}</span>
+          <Show when={isUser() && props.onRevert}>
+            <button
+              class="bg-transparent border border-[var(--border-base)] text-[var(--text-muted)] cursor-pointer px-2 py-0.5 rounded text-sm leading-none transition-all duration-200 flex items-center justify-center min-w-7 h-6 hover:bg-[var(--surface-hover)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] active:scale-95"
+              onClick={handleRevert}
+              title="Revert to this message"
+              aria-label="Revert to this message"
+            >
+              ↶
+            </button>
+          </Show>
+        </div>
       </div>
 
-      <div class="pt-1.5 leading-relaxed whitespace-pre-wrap break-words">
+      <div class="pt-1 whitespace-pre-wrap break-words leading-[1.1]">
         <Show when={props.isQueued && isUser()}>
           <div class="message-queued-badge">QUEUED</div>
         </Show>
@@ -98,7 +99,7 @@ export default function MessageItem(props: MessageItemProps) {
           </div>
         </Show>
 
-        <For each={messageParts()}>{(part) => <MessagePart part={part} />}</For>
+        <For each={messageParts()}>{(part) => <MessagePart part={part} messageType={props.message.type} />}</For>
       </div>
 
       <Show when={props.message.status === "sending"}>

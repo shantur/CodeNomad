@@ -1,24 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Kill background processes on exit
-trap 'kill $(jobs -p) 2>/dev/null' EXIT
+set -euo pipefail
 
-# Build main and preload in watch mode
-NODE_ENV=development vite build --watch --mode development --config electron.vite.config.ts --outDir dist/main &
-MAIN_PID=$!
+# ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-NODE_ENV=development vite build --watch --mode development --ssr electron/preload/index.ts --outDir dist/preload &
-PRELOAD_PID=$!
+if ! command -v node >/dev/null 2>&1; then
+  echo "Node.js is required to run the development environment." >&2
+  exit 1
+fi
 
-# Start vite dev server for renderer
-NODE_ENV=development vite --config electron.vite.config.ts --mode development &
-RENDERER_PID=$!
+# Resolve the Electron binary via Node to avoid Bun resolution hiccups
+ELECTRON_EXEC_PATH="$(node -p "require('electron')")"
 
-# Wait for builds to complete
-sleep 2
+if [[ -z "${ELECTRON_EXEC_PATH}" ]]; then
+  echo "Failed to resolve the Electron binary path." >&2
+  exit 1
+fi
 
-# Launch Electron
-NODE_ENV=development electron .
+export NODE_ENV="${NODE_ENV:-development}"
+export ELECTRON_EXEC_PATH
 
-# This will run when electron closes
-wait
+# ELECTRON_VITE_BIN="$ROOT_DIR/node_modules/.bin/electron-vite"
+
+if [[ ! -x "${ELECTRON_VITE_BIN}" ]]; then
+  echo "electron-vite binary not found. Have you installed dependencies?" >&2
+  exit 1
+fi
+
+exec "${ELECTRON_VITE_BIN}" dev "$@"
