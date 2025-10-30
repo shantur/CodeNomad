@@ -17,6 +17,10 @@ const LogsView: Component<LogsViewProps> = (props) => {
   const instance = () => instances().get(props.instanceId)
   const logs = () => instance()?.logs ?? []
 
+  let renderedCount = 0
+  let initialSyncDone = false
+  let emptyStateEl: HTMLDivElement | null = null
+
   onMount(() => {
     if (scrollRef && savedState) {
       scrollRef.scrollTop = savedState.scrollTop
@@ -32,11 +36,6 @@ const LogsView: Component<LogsViewProps> = (props) => {
     }
   })
 
-  createEffect(() => {
-    if (autoScroll() && scrollRef && logs().length > 0) {
-      scrollRef.scrollTop = scrollRef.scrollHeight
-    }
-  })
 
   const handleScroll = () => {
     if (!scrollRef) return
@@ -76,6 +75,78 @@ const LogsView: Component<LogsViewProps> = (props) => {
     }
   }
 
+  const createLogElement = (entry: LogEntry) => {
+    const row = document.createElement("div")
+    row.className = "log-entry"
+
+    const timestamp = document.createElement("span")
+    timestamp.className = "log-timestamp"
+    timestamp.textContent = formatTime(entry.timestamp)
+
+    const message = document.createElement("span")
+    message.className = `log-message ${getLevelColor(entry.level)}`
+    message.textContent = entry.message
+
+    row.append(timestamp, message)
+    return row
+  }
+
+  createEffect(() => {
+    const entries = logs()
+    if (!scrollRef) return
+
+    if (entries.length < renderedCount) {
+      scrollRef.innerHTML = ""
+      renderedCount = 0
+      initialSyncDone = false
+      if (emptyStateEl && emptyStateEl.parentElement) {
+        emptyStateEl.parentElement.removeChild(emptyStateEl)
+      }
+    }
+
+    if (entries.length === 0) {
+      renderedCount = 0
+      if (!emptyStateEl) {
+        emptyStateEl = document.createElement("div")
+        emptyStateEl.className = "log-empty-state"
+        emptyStateEl.textContent = "Waiting for server output..."
+      }
+      if (emptyStateEl.parentElement !== scrollRef) {
+        scrollRef.appendChild(emptyStateEl)
+      }
+      return
+    }
+
+    if (emptyStateEl && emptyStateEl.parentElement === scrollRef) {
+      scrollRef.removeChild(emptyStateEl)
+    }
+
+    for (let i = renderedCount; i < entries.length; i++) {
+      const entry = entries[i]
+      scrollRef.appendChild(createLogElement(entry))
+    }
+
+    renderedCount = entries.length
+
+    if (!initialSyncDone) {
+      if (savedState) {
+        const maxScrollTop = Math.max(scrollRef.scrollHeight - scrollRef.clientHeight, 0)
+        const target = Math.min(savedState.scrollTop, maxScrollTop)
+        scrollRef.scrollTop = target
+        setAutoScroll(savedState.autoScroll)
+      } else {
+        scrollRef.scrollTop = scrollRef.scrollHeight
+        setAutoScroll(true)
+      }
+      initialSyncDone = true
+      return
+    }
+
+    if (autoScroll()) {
+      scrollRef.scrollTop = scrollRef.scrollHeight
+    }
+  })
+
   return (
     <div class="log-container">
       <div class="log-header">
@@ -107,21 +178,7 @@ const LogsView: Component<LogsViewProps> = (props) => {
         ref={scrollRef}
         onScroll={handleScroll}
         class="log-content"
-      >
-        <Show
-          when={logs().length > 0}
-          fallback={<div class="log-empty-state">Waiting for server output...</div>}
-        >
-          <For each={logs()}>
-            {(entry) => (
-              <div class="log-entry">
-                <span class="log-timestamp">{formatTime(entry.timestamp)}</span>
-                <span class={`log-message ${getLevelColor(entry.level)}`}>{entry.message}</span>
-              </div>
-            )}
-          </For>
-        </Show>
-      </div>
+      ></div>
 
       <Show when={!autoScroll()}>
         <button
