@@ -162,6 +162,8 @@ A: See [build-roadmap.md](build-roadmap.md) for phases
 | tasks/README.md             | ✅ Complete | 2024-10-22   |
 | Task 001-005                | ✅ Complete | 2024-10-22   |
 
+**Project phase:** Post-MVP (Phases 1-3 complete; Phase 4 work underway).
+
 ---
 
 ## Contributing to Documentation

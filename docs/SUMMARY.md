@@ -1,5 +1,9 @@
 # OpenCode Client - Project Summary
 
+## Current Status
+
+We have completed the MVP milestones (Phases 1-3) and are now operating in post-MVP mode. Future work prioritizes multi-instance support, advanced input polish, and system integrations outlined in later phases.
+
 ## What We've Created
 
 A comprehensive specification and task breakdown for building the OpenCode Client desktop application.

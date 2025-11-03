@@ -34,6 +34,24 @@ export default function PromptInput(props: PromptInputProps) {
   let textareaRef: HTMLTextAreaElement | undefined
   let containerRef: HTMLDivElement | undefined
 
+  const MAX_TEXTAREA_HEIGHT = 200
+  const MIN_TEXTAREA_LINES = 4
+
+  function adjustTextareaHeight(textarea: HTMLTextAreaElement | undefined) {
+    if (!textarea) return
+
+    const computedStyle = window.getComputedStyle(textarea)
+    const fontSizeValue = parseFloat(computedStyle.fontSize)
+    const fallbackFontSize = Number.isFinite(fontSizeValue) && fontSizeValue > 0 ? fontSizeValue : 16
+    const lineHeightValue = parseFloat(computedStyle.lineHeight)
+    const lineHeight = Number.isFinite(lineHeightValue) && lineHeightValue > 0 ? lineHeightValue : fallbackFontSize * 1.5
+    const minHeight = lineHeight * MIN_TEXTAREA_LINES
+
+    textarea.style.height = "auto"
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), MAX_TEXTAREA_HEIGHT)
+    textarea.style.height = newHeight + "px"
+  }
+
   const attachments = () => getAttachments(props.instanceId, props.sessionId)
   const instanceAgents = () => agents().get(props.instanceId) || []
 
@@ -94,10 +112,18 @@ export default function PromptInput(props: PromptInputProps) {
     on(
       () => `${props.instanceId}:${props.sessionId}`,
       () => {
-        const storedPrompt = getPromptValue(props.instanceId, props.sessionId)
-        const currentAttachments = untrack(() => getAttachments(props.instanceId, props.sessionId))
+        const instanceId = props.instanceId
+        const sessionId = props.sessionId
 
-        setPrompt(storedPrompt)
+        onCleanup(() => {
+          setPromptValue(instanceId, sessionId, prompt())
+        })
+
+        const storedPrompt = getPromptValue(instanceId, sessionId)
+        const currentAttachments = untrack(() => getAttachments(instanceId, sessionId))
+
+        setPromptInternal(storedPrompt)
+        setPromptValue(instanceId, sessionId, storedPrompt)
         setHistoryIndex(-1)
         setIgnoredAtPositions(new Set<number>())
         setShowPicker(false)
@@ -106,10 +132,7 @@ export default function PromptInput(props: PromptInputProps) {
         syncAttachmentCounters(storedPrompt, currentAttachments)
 
         queueMicrotask(() => {
-          if (textareaRef) {
-            textareaRef.style.height = "auto"
-            textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
-          }
+          adjustTextareaHeight(textareaRef)
         })
       },
       { defer: true },
@@ -150,10 +173,7 @@ export default function PromptInput(props: PromptInputProps) {
 
       setPrompt(newPrompt)
 
-      if (textareaRef) {
-        textareaRef.style.height = "auto"
-        textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
-      }
+      adjustTextareaHeight(textareaRef)
     }
   }
 
@@ -202,8 +222,7 @@ export default function PromptInput(props: PromptInputProps) {
             setTimeout(() => {
               const newCursorPos = start + placeholder.length
               textarea.setSelectionRange(newCursorPos, newCursorPos)
-              textarea.style.height = "auto"
-              textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+              adjustTextareaHeight(textarea)
               textarea.focus()
             }, 0)
           }
@@ -247,18 +266,14 @@ export default function PromptInput(props: PromptInputProps) {
         setTimeout(() => {
           const newCursorPos = start + placeholder.length
           textarea.setSelectionRange(newCursorPos, newCursorPos)
-          textarea.style.height = "auto"
-          textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+          adjustTextareaHeight(textarea)
           textarea.focus()
         }, 0)
       }
     }
   }
 
-  onMount(async () => {
-    const loaded = await getHistory(props.instanceFolder)
-    setHistory(loaded)
-
+  onMount(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       const activeElement = document.activeElement as HTMLElement
 
@@ -287,6 +302,11 @@ export default function PromptInput(props: PromptInputProps) {
     onCleanup(() => {
       document.removeEventListener("keydown", handleGlobalKeyDown)
     })
+
+    void (async () => {
+      const loaded = await getHistory(props.instanceFolder)
+      setHistory(loaded)
+    })()
   })
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -329,8 +349,7 @@ export default function PromptInput(props: PromptInputProps) {
 
           setTimeout(() => {
             textarea.setSelectionRange(placeholderStart, placeholderStart)
-            textarea.style.height = "auto"
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+            adjustTextareaHeight(textarea)
           }, 0)
 
           return
@@ -372,8 +391,7 @@ export default function PromptInput(props: PromptInputProps) {
 
           setTimeout(() => {
             textarea.setSelectionRange(placeholderStart, placeholderStart)
-            textarea.style.height = "auto"
-            textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+            adjustTextareaHeight(textarea)
           }, 0)
 
           return
@@ -417,8 +435,7 @@ export default function PromptInput(props: PromptInputProps) {
 
             setTimeout(() => {
               textarea.setSelectionRange(mentionStart, mentionStart)
-              textarea.style.height = "auto"
-              textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+              adjustTextareaHeight(textarea)
             }, 0)
 
             return
@@ -427,8 +444,11 @@ export default function PromptInput(props: PromptInputProps) {
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey && !showPicker()) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault()
+      if (showPicker()) {
+        handlePickerClose()
+      }
       handleSend()
       return
     }
@@ -442,8 +462,7 @@ export default function PromptInput(props: PromptInputProps) {
       setHistoryIndex(newIndex)
       setPrompt(currentHistory[newIndex])
       setTimeout(() => {
-        textarea.style.height = "auto"
-        textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+        adjustTextareaHeight(textarea)
       }, 0)
       return
     }
@@ -459,8 +478,7 @@ export default function PromptInput(props: PromptInputProps) {
         setPrompt("")
       }
       setTimeout(() => {
-        textarea.style.height = "auto"
-        textarea.style.height = Math.min(textarea.scrollHeight, 200) + "px"
+        adjustTextareaHeight(textarea)
       }, 0)
       return
     }
@@ -477,9 +495,7 @@ export default function PromptInput(props: PromptInputProps) {
     setPasteCount(0)
     setImageCount(0)
 
-    if (textareaRef) {
-      textareaRef.style.height = "auto"
-    }
+    adjustTextareaHeight(textareaRef)
 
     try {
       await addToHistory(props.instanceFolder, text)
@@ -503,8 +519,7 @@ export default function PromptInput(props: PromptInputProps) {
     setPrompt(value)
     setHistoryIndex(-1)
 
-    target.style.height = "auto"
-    target.style.height = Math.min(target.scrollHeight, 200) + "px"
+    adjustTextareaHeight(target)
 
     const cursorPos = target.selectionStart
     const textBeforeCursor = value.substring(0, cursorPos)
@@ -568,8 +583,7 @@ export default function PromptInput(props: PromptInputProps) {
           if (textareaRef) {
             const newCursorPos = pos + attachmentText.length + 1
             textareaRef.setSelectionRange(newCursorPos, newCursorPos)
-            textareaRef.style.height = "auto"
-            textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+            adjustTextareaHeight(textareaRef)
           }
         }, 0)
       }
@@ -594,8 +608,7 @@ export default function PromptInput(props: PromptInputProps) {
             if (textareaRef) {
               const newCursorPos = pos + 1 + path.length
               textareaRef.setSelectionRange(newCursorPos, newCursorPos)
-              textareaRef.style.height = "auto"
-              textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+              adjustTextareaHeight(textareaRef)
               textareaRef.focus()
             }
           }, 0)
@@ -627,8 +640,7 @@ export default function PromptInput(props: PromptInputProps) {
           if (textareaRef) {
             const newCursorPos = pos + attachmentText.length + 1
             textareaRef.setSelectionRange(newCursorPos, newCursorPos)
-            textareaRef.style.height = "auto"
-            textareaRef.style.height = Math.min(textareaRef.scrollHeight, 200) + "px"
+            adjustTextareaHeight(textareaRef)
           }
         }, 0)
       }
@@ -811,7 +823,7 @@ export default function PromptInput(props: PromptInputProps) {
               when={props.escapeInDebounce}
               fallback={
                 <>
-                  <Kbd>Enter</Kbd> to send • <Kbd>Shift+Enter</Kbd> for new line • <Kbd>@</Kbd> for files/agents •{" "}
+                  <Kbd>Enter</Kbd> for new line • <Kbd shortcut="cmd+enter" /> to send • <Kbd>@</Kbd> for files/agents •{" "}
                   <Kbd>↑↓</Kbd> for history
                   <Show when={attachments().length > 0}>
                     <span class="ml-2 text-xs" style="color: var(--text-muted);">• {attachments().length} file(s) attached</span>

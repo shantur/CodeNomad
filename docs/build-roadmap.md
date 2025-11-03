@@ -4,6 +4,8 @@
 
 This document outlines the phased approach to building the OpenCode Client desktop application. Each phase builds incrementally on the previous, with clear deliverables and milestones.
 
+**Status:** MVP (Phases 1-3) is complete. Focus now shifts to post-MVP phases starting with multi-instance support and advanced input refinements.
+
 ## MVP Scope (Phases 1-3)
 
 The minimum viable product includes:

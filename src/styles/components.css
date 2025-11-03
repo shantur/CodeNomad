@@ -183,7 +183,7 @@ button.button-primary {
 }
 
 .prompt-input {
-  @apply flex-1 min-h-[40px] max-h-[200px] p-2.5 border rounded-md text-sm resize-none outline-none transition-colors;
+  @apply flex-1 min-h-[96px] max-h-[200px] p-2.5 border rounded-md text-sm resize-none outline-none transition-colors;
   font-family: inherit;
   background-color: var(--surface-base);
   color: inherit;

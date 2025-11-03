@@ -99,13 +99,13 @@ export function Markdown(props: MarkdownProps) {
   })
 
   const proseClass = () => {
-    const classes = ["prose", "dark:prose-invert", "max-w-none"]
+    const classes = ["dark:prose-invert", "max-w-none", "prose-tight", "prose"]
 
-    if (props.size === "tight") {
-      classes.push("prose-sm", "prose-tight")
-    } else if (props.size === "sm") {
-      classes.push("prose-sm")
-    }
+    // if (props.size === "tight") {
+    //   classes.push("prose-sm", "prose-tight")
+    // } else if (props.size === "sm") {
+    //   classes.push("prose-sm")
+    // }
 
     return classes.join(" ")
   }

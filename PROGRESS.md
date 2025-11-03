@@ -110,7 +110,7 @@ packages/opencode-client/
 - Text input with multi-line support
 - Send button
 - File attachment support
-- Keyboard shortcuts (Enter to send, Shift+Enter for newline)
+- Keyboard shortcuts (Enter for new line; Cmd+Enter/Ctrl+Enter to send)
 
 ### Task 008: Instance Tabs
 - Tab bar for multiple instances

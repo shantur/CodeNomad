@@ -266,8 +266,8 @@ Click to expand: Show diff inline
 
 **Keyboard Shortcuts:**
 
-- Enter: Send message
-- Shift+Enter: New line
+- Enter: New line
+- Cmd+Enter (macOS) / Ctrl+Enter (Windows/Linux): Send message
 - Cmd/Ctrl+K: Clear input
 - Cmd/Ctrl+V: Paste (handles files)
 - Cmd/Ctrl+L: Focus input

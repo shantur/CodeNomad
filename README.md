@@ -135,7 +135,7 @@ bun run preview      # Preview production build
 ### Sending Messages
 
 - Type in the input box at bottom
-- Press Enter to send (Shift+Enter for new line)
+- Press Enter for new line (Cmd+Enter on macOS, Ctrl+Enter on Windows/Linux)
 - Use `/` for commands
 - Use `@` to mention files
 
