@@ -7,12 +7,17 @@ interface MarkdownProps {
   isDark?: boolean
   size?: "base" | "sm" | "tight"
   disableHighlight?: boolean
+  onRendered?: () => void
 }
 
 export function Markdown(props: MarkdownProps) {
   const [html, setHtml] = createSignal("")
   let containerRef: HTMLDivElement | undefined
   let latestRequestedText = ""
+
+  const notifyRendered = () => {
+    Promise.resolve().then(() => props.onRendered?.())
+  }
 
   createEffect(async () => {
     const part = props.part
@@ -34,11 +39,13 @@ export function Markdown(props: MarkdownProps) {
 
         if (latestRequestedText === text) {
           setHtml(rendered)
+          notifyRendered()
         }
       } catch (error) {
         console.error("Failed to render markdown:", error)
         if (latestRequestedText === text) {
           setHtml(text)
+          notifyRendered()
         }
       }
       return
@@ -47,6 +54,7 @@ export function Markdown(props: MarkdownProps) {
     const cache = part.renderCache
     if (cache && cache.text === text && cache.theme === themeKey) {
       setHtml(cache.html)
+      notifyRendered()
       return
     }
 
@@ -56,12 +64,14 @@ export function Markdown(props: MarkdownProps) {
       if (latestRequestedText === text) {
         setHtml(rendered)
         part.renderCache = { text, html: rendered, theme: themeKey }
+        notifyRendered()
       }
     } catch (error) {
       console.error("Failed to render markdown:", error)
       if (latestRequestedText === text) {
         setHtml(text)
         part.renderCache = { text, html: text, theme: themeKey }
+        notifyRendered()
       }
     }
   })
@@ -110,6 +120,7 @@ export function Markdown(props: MarkdownProps) {
           setHtml(rendered)
           const themeKey = Boolean(props.isDark) ? "dark" : "light"
           part.renderCache = { text, html: rendered, theme: themeKey }
+          notifyRendered()
         }
       } catch (error) {
         console.error("Failed to re-render markdown after language load:", error)

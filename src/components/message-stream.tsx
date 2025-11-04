@@ -154,6 +154,7 @@ interface ToolCacheEntry {
   toolPart: any
   messageInfo?: any
   signature: string
+  contentKey: string
   item: ToolDisplayItem
 }
 
@@ -174,9 +175,26 @@ export default function MessageStream(props: MessageStreamProps) {
   function createToolSignature(message: Message, toolPart: any, toolIndex: number, messageInfo?: any): string {
     const messageId = message.id
     const partId = typeof toolPart?.id === "string" ? toolPart.id : `${messageId}-tool-${toolIndex}`
-    const status = toolPart?.state?.status ?? messageInfo?.state?.status ?? ""
-    const version = message.version ?? 0
-    return `${messageId}:${partId}:${status}:${version}`
+    return `${messageId}:${partId}`
+  }
+
+  function createToolContentKey(toolPart: any, messageInfo?: any): string {
+    const state = toolPart?.state ?? {}
+    const metadata = state?.metadata ?? {}
+    const input = state?.input ?? {}
+    const output = state?.output ?? {}
+    const error = state?.error ?? null
+    const title = state?.title ?? null
+    return JSON.stringify({
+      tool: toolPart?.tool ?? null,
+      status: state?.status ?? null,
+      title,
+      input,
+      output,
+      metadata,
+      error,
+      messageInfoState: messageInfo?.state ?? null,
+    })
   }
 
   const sessionInfo = createMemo(() => {
@@ -353,15 +371,27 @@ export default function MessageStream(props: MessageStreamProps) {
         const toolKey = typeof toolPart?.id === "string" ? toolPart.id : `${message.id}-tool-${toolIndex}`
 
         const toolSignature = createToolSignature(message, toolPart, toolIndex, messageInfo)
+        const contentKey = createToolContentKey(toolPart, messageInfo)
         const toolEntry = toolItemCache.get(toolKey)
         if (toolEntry && toolEntry.signature === toolSignature) {
-          toolEntry.toolPart = toolPart
-          toolEntry.messageInfo = messageInfo
-          toolEntry.signature = toolSignature
-          toolEntry.item.toolPart = toolPart
-          toolEntry.item.messageInfo = messageInfo
-          newToolCache.set(toolKey, toolEntry)
-          items.push(toolEntry.item)
+          if (toolEntry.contentKey !== contentKey) {
+            const updatedItem: ToolDisplayItem = {
+              ...toolEntry.item,
+              toolPart,
+              messageInfo,
+            }
+            toolEntry.toolPart = toolPart
+            toolEntry.messageInfo = messageInfo
+            toolEntry.signature = toolSignature
+            toolEntry.contentKey = contentKey
+            toolEntry.item = updatedItem
+            console.debug("[ToolCall] update", toolKey, toolPart?.state?.status)
+            newToolCache.set(toolKey, toolEntry)
+            items.push(updatedItem)
+          } else {
+            newToolCache.set(toolKey, toolEntry)
+            items.push(toolEntry.item)
+          }
         } else {
           const toolItem: ToolDisplayItem = {
             type: "tool",
@@ -369,7 +399,8 @@ export default function MessageStream(props: MessageStreamProps) {
             toolPart,
             messageInfo,
           }
-          newToolCache.set(toolKey, { toolPart, messageInfo, signature: toolSignature, item: toolItem })
+          console.debug("[ToolCall] create", toolKey, toolPart?.state?.status)
+          newToolCache.set(toolKey, { toolPart, messageInfo, signature: toolSignature, contentKey, item: toolItem })
           items.push(toolItem)
         }
       }
@@ -568,7 +599,7 @@ export default function MessageStream(props: MessageStreamProps) {
                   <span>Tool Call</span>
                   <span class="tool-name">{toolPart?.tool || "unknown"}</span>
                 </div>
-                <ToolCall toolCall={toolPart} toolCallId={toolPart?.id} />
+                <ToolCall toolCall={toolPart} toolCallId={item.key} />
               </div>
             )
           }}

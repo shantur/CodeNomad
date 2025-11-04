@@ -763,6 +763,15 @@ button.button-primary {
   padding: 0;
   font-size: var(--font-size-xs);
   line-height: var(--line-height-tight);
+  max-height: calc(15 * 1.4em);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-base) transparent;
+  scrollbar-gutter: stable both-edges;
+}
+
+.tool-call-markdown-large {
+  max-height: calc(50 * 1.4em);
 }
 
 .tool-call-markdown .markdown-code-block {
@@ -780,31 +789,23 @@ button.button-primary {
 .tool-call-markdown .markdown-code-block pre {
   margin: 0 !important;
   min-height: auto;
-  max-height: calc(15 * 1.4em);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-base) transparent;
-  scrollbar-gutter: stable both-edges;
+  max-height: none;
+  overflow-y: visible;
 }
 
-.tool-call-markdown .markdown-code-block pre::-webkit-scrollbar {
+.tool-call-markdown::-webkit-scrollbar {
   width: 8px;
 }
 
-.tool-call-markdown .markdown-code-block pre::-webkit-scrollbar-track {
+.tool-call-markdown::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.tool-call-markdown .markdown-code-block pre::-webkit-scrollbar-thumb {
+.tool-call-markdown::-webkit-scrollbar-thumb {
   background-color: var(--border-base);
   border-radius: 4px;
   border: 2px solid transparent;
   background-clip: padding-box;
-}
-
-.tool-call-markdown-large .markdown-code-block pre {
-  min-height: auto;
-  max-height: calc(50 * 1.4em);
 }
 
 .tool-call-section h4 {

@@ -1,7 +1,63 @@
-import { createSignal, Show, For, createEffect } from "solid-js"
+import { createSignal, Show, For, createEffect, onCleanup } from "solid-js"
 import { isToolCallExpanded, toggleToolCallExpanded, setToolCallExpanded } from "../stores/tool-call-state"
 import { Markdown } from "./markdown"
 import { useTheme } from "../lib/theme"
+import type { TextPart } from "../types/message"
+
+// Module-level cache for stable TextPart objects per tool call
+const markdownPartCache = new Map<string, TextPart>()
+const toolScrollState = new Map<string, { scrollTop: number; atBottom: boolean }>()
+
+function updateScrollState(id: string, element: HTMLElement) {
+  if (!id) return
+  const distanceFromBottom = element.scrollHeight - (element.scrollTop + element.clientHeight)
+  const atBottom = distanceFromBottom <= 2
+  toolScrollState.set(id, { scrollTop: element.scrollTop, atBottom })
+}
+
+function restoreScrollState(id: string, element: HTMLElement) {
+  if (!id) return
+  const state = toolScrollState.get(id)
+  if (!state) {
+    requestAnimationFrame(() => {
+      element.scrollTop = element.scrollHeight
+      updateScrollState(id, element)
+    })
+    return
+  }
+
+  requestAnimationFrame(() => {
+    if (state.atBottom) {
+      element.scrollTop = element.scrollHeight
+    } else {
+      const maxScrollTop = Math.max(element.scrollHeight - element.clientHeight, 0)
+      element.scrollTop = Math.min(state.scrollTop, maxScrollTop)
+    }
+    updateScrollState(id, element)
+  })
+}
+
+function getCachedMarkdownPart(id: string, text: string): TextPart {
+  if (!id) {
+    // No caching case - return fresh object
+    return { type: "text", text }
+  }
+
+  const part = markdownPartCache.get(id)
+  if (!part) {
+    const freshPart: TextPart = { type: "text", text }
+    markdownPartCache.set(id, freshPart)
+    return freshPart
+  }
+
+  if (part.text !== text) {
+    const freshPart: TextPart = { type: "text", text }
+    markdownPartCache.set(id, freshPart)
+    return freshPart
+  }
+
+  return part
+}
 
 interface ToolCallProps {
   toolCall: any
@@ -103,6 +159,14 @@ export default function ToolCall(props: ToolCallProps) {
   const expanded = () => isToolCallExpanded(toolCallId())
   const [initializedId, setInitializedId] = createSignal<string | null>(null)
 
+  let markdownContainerRef: HTMLDivElement | undefined
+
+  const handleMarkdownRendered = () => {
+    const id = toolCallId()
+    if (!id || !markdownContainerRef) return
+    restoreScrollState(id, markdownContainerRef)
+  }
+
   createEffect(() => {
     const id = toolCallId()
     if (!id || initializedId() === id) return
@@ -112,6 +176,32 @@ export default function ToolCall(props: ToolCallProps) {
 
     setToolCallExpanded(id, shouldExpand)
     setInitializedId(id)
+  })
+
+  // Restore scroll position when content updates
+  createEffect(() => {
+    const id = toolCallId()
+    const element = markdownContainerRef
+    if (!id || !element) return
+
+    const tool = toolName()
+    if (tool === "todowrite" || tool === "task") return
+
+    const content = getMarkdownContent(tool, props.toolCall?.state || {})
+    if (!content) return
+
+    restoreScrollState(id, element)
+  })
+
+  // Cleanup cache entry when component unmounts or toolCallId changes
+  createEffect(() => {
+    const id = toolCallId()
+    if (!id) return
+
+    onCleanup(() => {
+      markdownPartCache.delete(id)
+      toolScrollState.delete(id)
+    })
   })
 
   const statusIcon = () => {
@@ -292,12 +382,33 @@ export default function ToolCall(props: ToolCallProps) {
     const messageClass = `message-text tool-call-markdown${isLarge ? " tool-call-markdown-large" : ""}`
     const disableHighlight = state?.status === "running"
 
+    const cachedPart = getCachedMarkdownPart(toolCallId(), content)
+
     return (
-      <div class={messageClass}>
+      <div
+        class={messageClass}
+        ref={(element) => {
+          markdownContainerRef = element || undefined
+          const id = toolCallId()
+          if (!element || !id) return
+
+          if (!toolScrollState.has(id)) {
+            requestAnimationFrame(() => {
+              if (!markdownContainerRef || toolCallId() !== id) return
+              markdownContainerRef.scrollTop = markdownContainerRef.scrollHeight
+              updateScrollState(id, markdownContainerRef)
+            })
+          } else {
+            restoreScrollState(id, element)
+          }
+        }}
+        onScroll={(event) => updateScrollState(toolCallId(), event.currentTarget)}
+      >
         <Markdown
-          part={{ type: "text", text: content }}
+          part={cachedPart}
           isDark={isDark()}
           disableHighlight={disableHighlight}
+          onRendered={handleMarkdownRendered}
         />
       </div>
     )
