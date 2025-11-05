@@ -768,6 +768,7 @@ button.button-primary {
   scrollbar-width: thin;
   scrollbar-color: var(--border-base) transparent;
   scrollbar-gutter: stable both-edges;
+  position: relative;
 }
 
 .tool-call-markdown-large {
@@ -783,7 +784,8 @@ button.button-primary {
 .tool-call-markdown .code-block-header {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  box-shadow: 0 1px 0 var(--border-base);
 }
 
 .tool-call-markdown .markdown-code-block pre {
