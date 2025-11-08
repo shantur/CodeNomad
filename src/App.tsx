@@ -1,4 +1,5 @@
 import { Component, onMount, onCleanup, Show, createMemo, createEffect, createSignal } from "solid-js"
+import { Toaster } from "solid-toast"
 import type { Session } from "./types/session"
 import type { Attachment } from "./types/attachment"
 import FolderSelectionView from "./components/folder-selection-view"
@@ -219,15 +220,18 @@ const ContextUsagePanel: Component<{ instanceId: string; sessionId: string }> = 
         cost: 0,
         contextWindow: 0,
         isSubscriptionModel: false,
+        contextUsageTokens: 0,
       },
   )
 
   const tokens = createMemo(() => info().tokens)
+  const contextUsageTokens = createMemo(() => info().contextUsageTokens ?? 0)
   const contextWindow = createMemo(() => info().contextWindow)
   const percentage = createMemo(() => {
     const windowSize = contextWindow()
     if (!windowSize || windowSize <= 0) return null
-    const percent = Math.round((tokens() / windowSize) * 100)
+    const usage = contextUsageTokens()
+    const percent = Math.round((usage / windowSize) * 100)
     return Math.min(100, Math.max(0, percent))
   })
 
@@ -252,7 +256,7 @@ const ContextUsagePanel: Component<{ instanceId: string; sessionId: string }> = 
         </div>
         <div class="text-sm text-primary/90">
           {contextWindow()
-            ? `${formatTokenTotal(tokens())} of ${formatTokenTotal(contextWindow())}`
+            ? `${formatTokenTotal(contextUsageTokens())} of ${formatTokenTotal(contextWindow())}`
             : "Window size unavailable"}
         </div>
       </div>
@@ -1081,6 +1085,17 @@ const App: Component = () => {
           </div>
         </div>
       </Show>
+
+      <Toaster
+        position="top-right"
+        gutter={12}
+        toastOptions={{
+          duration: 5000,
+          className: `text-sm shadow-lg border border-base ${
+            isDark() ? "bg-surface-secondary text-primary" : "bg-white text-gray-900"
+          }`,
+        }}
+      />
     </div>
   )
 }

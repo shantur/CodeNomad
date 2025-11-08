@@ -47,6 +47,7 @@ export interface Model {
   providerId: string
   limit?: {
     context?: number
+    output?: number
   }
   cost?: {
     input?: number

@@ -1,10 +1,11 @@
 import { Component, For, Show, createSignal, createEffect, onCleanup, onMount, createMemo, JSX } from "solid-js"
 import type { Session } from "../types/session"
-import { MessageSquare, Info, X } from "lucide-solid"
+import { MessageSquare, Info, X, Copy } from "lucide-solid"
 import KeyboardHint from "./keyboard-hint"
 import Kbd from "./kbd"
 import { keyboardRegistry } from "../lib/keyboard-registry"
 import { formatShortcut } from "../lib/keyboard-utils"
+import { showToastNotification } from "../lib/notifications"
 
 interface SessionListProps {
   instanceId: string
@@ -76,8 +77,25 @@ const SessionList: Component<SessionListProps> = (props) => {
   createEffect(() => {
     props.onWidthChange?.(sidebarWidth())
   })
-
+ 
+  const copySessionId = async (event: MouseEvent, sessionId: string) => {
+    event.stopPropagation()
+ 
+    try {
+      if (typeof navigator === "undefined" || !navigator.clipboard) {
+        throw new Error("Clipboard API unavailable")
+      }
+ 
+      await navigator.clipboard.writeText(sessionId)
+      showToastNotification({ message: "Session ID copied", variant: "success" })
+    } catch (error) {
+      console.error(`Failed to copy session ID ${sessionId}:`, error)
+      showToastNotification({ message: "Unable to copy session ID", variant: "error" })
+    }
+  }
+ 
   const clampWidth = (width: number) => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width))
+
 
   const removeMouseListeners = () => {
     if (mouseMoveHandler) {
@@ -269,18 +287,30 @@ const SessionList: Component<SessionListProps> = (props) => {
                     >
                       <MessageSquare class="w-4 h-4 flex-shrink-0" />
                       <span class="session-item-title truncate">{title()}</span>
-                      <span
-                        class="session-item-close opacity-0 group-hover:opacity-100 hover:bg-status-error hover:text-white rounded p-0.5 transition-all"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          props.onClose(id)
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        aria-label="Close session"
-                      >
-                        <X class="w-3 h-3" />
-                      </span>
+                      <div class="flex items-center gap-1 ml-auto">
+                        <span
+                          class={`session-item-close opacity-80 hover:opacity-100 ${isActive() ? "hover:bg-white/20" : "hover:bg-surface-hover"}`}
+                          onClick={(event) => copySessionId(event, id)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Copy session ID"
+                          title="Copy session ID"
+                        >
+                          <Copy class="w-3 h-3" />
+                        </span>
+                        <span
+                          class="session-item-close opacity-0 group-hover:opacity-100 hover:bg-status-error hover:text-white rounded p-0.5 transition-all"
+                          onClick={(event) => {
+                            event.stopPropagation()
+                            props.onClose(id)
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Close session"
+                        >
+                          <X class="w-3 h-3" />
+                        </span>
+                      </div>
                     </button>
                   </div>
                 )
@@ -315,6 +345,18 @@ const SessionList: Component<SessionListProps> = (props) => {
                     >
                       <MessageSquare class="w-4 h-4 flex-shrink-0" />
                       <span class="session-item-title truncate">{title()}</span>
+                      <div class="flex items-center gap-1 ml-auto">
+                        <span
+                          class={`session-item-close opacity-80 hover:opacity-100 ${isActive() ? "hover:bg-white/20" : "hover:bg-surface-hover"}`}
+                          onClick={(event) => copySessionId(event, id)}
+                          role="button"
+                          tabIndex={0}
+                          aria-label="Copy session ID"
+                          title="Copy session ID"
+                        >
+                          <Copy class="w-3 h-3" />
+                        </span>
+                      </div>
                     </button>
                   </div>
                 )

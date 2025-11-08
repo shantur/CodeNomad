@@ -6,6 +6,7 @@ import { instances } from "./instances"
 
 import { sseManager } from "../lib/sse-manager"
 import { decodeHtmlEntities } from "../lib/markdown"
+import { showToastNotification, ToastVariant } from "../lib/notifications"
 import { preferences, addRecentModelPreference, getAgentModelPreference, setAgentModelPreference } from "./preferences"
 
 interface SessionInfo {
@@ -13,7 +14,11 @@ interface SessionInfo {
   cost: number
   contextWindow: number
   isSubscriptionModel: boolean
+  contextUsageTokens: number
 }
+
+const DEFAULT_MODEL_OUTPUT_LIMIT = 32_000
+const ALLOWED_TOAST_VARIANTS = new Set<ToastVariant>(["info", "success", "warning", "error"])
 
 const [sessions, setSessions] = createSignal<Map<string, Map<string, Session>>>(new Map())
 const [activeSessionId, setActiveSessionId] = createSignal<Map<string, string>>(new Map())
@@ -424,6 +429,8 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
   let isSubscriptionModel = false
   let modelID = ""
   let providerID = ""
+  let inputTokensForUsage = 0
+  let cacheReadTokensForUsage = 0
 
   // Calculate from last assistant message in this session only
   if (session.messagesInfo.size > 0) {
@@ -450,7 +457,10 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
             cost = info.cost || 0
           }
 
-          // Get model info for context window and subscription check
+          inputTokensForUsage = usage.input || 0
+          cacheReadTokensForUsage = usage.cache?.read || 0
+
+          // Get model info identifiers for context lookups
           modelID = info.modelID || ""
           providerID = info.providerID || ""
           isSubscriptionModel = cost === 0
@@ -461,21 +471,38 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
     }
   }
 
-  // Get context window from providers
-  if (modelID && providerID) {
-    const instanceProviders = providers().get(instanceId) || []
+  const instanceProviders = providers().get(instanceId) || []
+
+  const sessionModel = session.model
+  let selectedModel: Provider["models"][number] | undefined
+
+  if (sessionModel?.providerId && sessionModel?.modelId) {
+    const provider = instanceProviders.find((p) => p.id === sessionModel.providerId)
+    selectedModel = provider?.models.find((m) => m.id === sessionModel.modelId)
+  }
+
+  if (!selectedModel && modelID && providerID) {
     const provider = instanceProviders.find((p) => p.id === providerID)
-    if (provider) {
-      const model = provider.models.find((m) => m.id === modelID)
-      if (model?.limit?.context) {
-        contextWindow = model.limit.context
-      }
-      // Check if it's a subscription model (cost is 0 for both input and output)
-      if (model?.cost?.input === 0 && model?.cost?.output === 0) {
-        isSubscriptionModel = true
-      }
+    selectedModel = provider?.models.find((m) => m.id === modelID)
+  }
+
+  let modelOutputLimit = DEFAULT_MODEL_OUTPUT_LIMIT
+
+  if (selectedModel) {
+    if (selectedModel.limit?.context) {
+      contextWindow = selectedModel.limit.context
+    }
+
+    if (selectedModel.limit?.output && selectedModel.limit.output > 0) {
+      modelOutputLimit = selectedModel.limit.output
+    }
+
+    if (selectedModel.cost?.input === 0 && selectedModel.cost?.output === 0) {
+      isSubscriptionModel = true
     }
   }
+
+  const contextUsageTokens = inputTokensForUsage + cacheReadTokensForUsage + modelOutputLimit
 
   setSessionInfoByInstance((prev) => {
     const next = new Map(prev)
@@ -485,6 +512,7 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
       cost,
       contextWindow,
       isSubscriptionModel,
+      contextUsageTokens,
     })
     next.set(instanceId, instanceInfo)
     return next
@@ -552,14 +580,25 @@ async function createSession(instanceId: string, agent?: string): Promise<Sessio
     })
 
     // Initialize session info with zeros for the new session
+    const instanceProviders = providers().get(instanceId) || []
+    const initialProvider = instanceProviders.find((p) => p.id === session.model.providerId)
+    const initialModel = initialProvider?.models.find((m) => m.id === session.model.modelId)
+    const initialContextWindow = initialModel?.limit?.context ?? 0
+    const initialOutputLimit =
+      initialModel?.limit?.output && initialModel.limit.output > 0
+        ? initialModel.limit.output
+        : DEFAULT_MODEL_OUTPUT_LIMIT
+    const initialSubscriptionModel = initialModel?.cost?.input === 0 && initialModel?.cost?.output === 0
+
     setSessionInfoByInstance((prev) => {
       const next = new Map(prev)
       const instanceInfo = new Map(prev.get(instanceId))
       instanceInfo.set(session.id, {
         tokens: 0,
         cost: 0,
-        contextWindow: 0,
-        isSubscriptionModel: false,
+        contextWindow: initialContextWindow,
+        isSubscriptionModel: Boolean(initialSubscriptionModel),
+        contextUsageTokens: initialOutputLimit,
       })
       next.set(instanceId, instanceInfo)
       return next
@@ -644,14 +683,23 @@ async function forkSession(
     return next
   })
 
+  const instanceProviders = providers().get(instanceId) || []
+  const forkProvider = instanceProviders.find((p) => p.id === forkedSession.model.providerId)
+  const forkModel = forkProvider?.models.find((m) => m.id === forkedSession.model.modelId)
+  const forkContextWindow = forkModel?.limit?.context ?? 0
+  const forkOutputLimit =
+    forkModel?.limit?.output && forkModel.limit.output > 0 ? forkModel.limit.output : DEFAULT_MODEL_OUTPUT_LIMIT
+  const forkSubscriptionModel = forkModel?.cost?.input === 0 && forkModel?.cost?.output === 0
+
   setSessionInfoByInstance((prev) => {
     const next = new Map(prev)
     const instanceInfo = new Map(prev.get(instanceId))
     instanceInfo.set(forkedSession.id, {
       tokens: 0,
       cost: 0,
-      contextWindow: 0,
-      isSubscriptionModel: false,
+      contextWindow: forkContextWindow,
+      isSubscriptionModel: Boolean(forkSubscriptionModel),
+      contextUsageTokens: forkOutputLimit,
     })
     next.set(instanceId, instanceInfo)
     return next
@@ -1597,6 +1645,10 @@ async function updateSessionAgent(instanceId: string, sessionId: string, agent: 
   if (agent && shouldApplyModel) {
     setAgentModelPreference(instanceId, agent, nextModel)
   }
+
+  if (shouldApplyModel) {
+    updateSessionInfo(instanceId, sessionId)
+  }
 }
 
 async function updateSessionModel(
@@ -1632,6 +1684,8 @@ async function updateSessionModel(
     setAgentModelPreference(instanceId, currentAgent, model)
   }
   addRecentModelPreference(model)
+
+  updateSessionInfo(instanceId, sessionId)
 }
 
 function handleSessionCompacted(instanceId: string, event: any): void {
@@ -1677,12 +1731,30 @@ function handleMessagePartRemoved(instanceId: string, event: any): void {
   loadMessages(instanceId, sessionID, true).catch(console.error)
 }
 
+function handleTuiToast(_instanceId: string, event: any): void {
+  const payload = event?.properties
+  if (!payload || typeof payload.message !== "string" || typeof payload.variant !== "string") return
+  if (!payload.message.trim()) return
+
+  const variant: ToastVariant = ALLOWED_TOAST_VARIANTS.has(payload.variant as ToastVariant)
+    ? (payload.variant as ToastVariant)
+    : "info"
+
+  showToastNotification({
+    title: typeof payload.title === "string" ? payload.title : undefined,
+    message: payload.message,
+    variant,
+    duration: typeof payload.duration === "number" ? payload.duration : undefined,
+  })
+}
+
 sseManager.onMessageUpdate = handleMessageUpdate
 sseManager.onMessageRemoved = handleMessageRemoved
 sseManager.onMessagePartRemoved = handleMessagePartRemoved
 sseManager.onSessionUpdate = handleSessionUpdate
 sseManager.onSessionCompacted = handleSessionCompacted
 sseManager.onSessionError = handleSessionError
+sseManager.onTuiToast = handleTuiToast
 
 export {
   sessions,

@@ -40,12 +40,39 @@ export class FileStorage {
     }
   }
 
+  private parseConfig(content: string): ConfigData {
+    const trimmed = content.trim()
+
+    try {
+      return JSON.parse(trimmed)
+    } catch (error) {
+      const firstBrace = trimmed.indexOf("{")
+      const lastBrace = trimmed.lastIndexOf("}")
+
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const sanitized = trimmed.slice(firstBrace, lastBrace + 1)
+
+        if (sanitized.length !== trimmed.length) {
+          console.warn("Config file contained trailing data; attempting recovery")
+        }
+
+        try {
+          return JSON.parse(sanitized)
+        } catch {
+          // Fall through to rethrow original error below
+        }
+      }
+
+      throw error
+    }
+  }
+
   // Config operations
   async loadConfig(): Promise<ConfigData> {
     await this.ensureInitialized()
     try {
       const content = await window.electronAPI.readConfigFile()
-      return JSON.parse(content)
+      return this.parseConfig(content)
     } catch (error) {
       console.warn("Failed to load config, using defaults:", error)
       return {

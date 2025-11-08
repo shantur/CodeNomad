@@ -20,6 +20,16 @@ interface SessionUpdateEvent {
   session: any
 }
 
+interface TuiToastEvent {
+  type: "tui.toast.show"
+  properties: {
+    title?: string
+    message: string
+    variant: "info" | "success" | "warning" | "error"
+    duration?: number
+  }
+}
+
 const [connectionStatus, setConnectionStatus] = createSignal<
   Map<string, "connecting" | "connected" | "disconnected" | "error">
 >(new Map())
@@ -104,6 +114,9 @@ class SSEManager {
       case "session.error":
         this.onSessionError?.(instanceId, event)
         break
+      case "tui.toast.show":
+        this.onTuiToast?.(instanceId, event as TuiToastEvent)
+        break
       case "session.idle":
         console.log("[SSE] Session idle")
         break
@@ -147,6 +160,7 @@ class SSEManager {
   onSessionUpdate?: (instanceId: string, event: SessionUpdateEvent) => void
   onSessionCompacted?: (instanceId: string, event: any) => void
   onSessionError?: (instanceId: string, event: any) => void
+  onTuiToast?: (instanceId: string, event: TuiToastEvent) => void
 
   getStatus(instanceId: string): "connecting" | "connected" | "disconnected" | "error" | null {
     return connectionStatus().get(instanceId) ?? null
