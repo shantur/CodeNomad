@@ -5,11 +5,23 @@ import { ToolCallDiffViewer } from "./diff-viewer"
 import { useTheme } from "../lib/theme"
 import { getLanguageFromPath } from "../lib/markdown"
 import { isRenderableDiffText } from "../lib/diff-utils"
-import { preferences, setDiffViewMode, type DiffViewMode } from "../stores/preferences"
+import { getToolRenderCache, setToolRenderCache } from "../lib/tool-render-cache"
 import type { TextPart } from "../types/message"
 
 
 const toolScrollState = new Map<string, { scrollTop: number; atBottom: boolean }>()
+
+function makeRenderCacheKey(
+  baseId?: string | null,
+  messageId?: string,
+  messageVersion?: number,
+  partVersion?: number,
+) {
+  if (!baseId && !messageId) return undefined
+  const suffix = `${messageVersion ?? 0}:${partVersion ?? 0}`
+  const keyBase = baseId || messageId || "tool"
+  return `${keyBase}::${suffix}`
+}
 
 function updateScrollState(id: string, element: HTMLElement) {
   if (!id) return
@@ -44,6 +56,9 @@ function restoreScrollState(id: string, element: HTMLElement) {
 interface ToolCallProps {
   toolCall: any
   toolCallId?: string
+  messageId?: string
+  messageVersion?: number
+  partVersion?: number
 }
 
 function getToolIcon(tool: string): string {
@@ -367,11 +382,9 @@ export default function ToolCall(props: ToolCallProps) {
   }
 
   function renderDiffTool(payload: DiffPayload) {
-    const diffMode = () => (preferences().diffViewMode || "split") as DiffViewMode
-
-    const handleModeChange = (mode: DiffViewMode) => {
-      setDiffViewMode(mode)
-    }
+    const relativePath = payload.filePath ? getRelativePath(payload.filePath) : ""
+    const toolbarLabel = relativePath ? `Diff · ${relativePath}` : "Diff"
+    const cacheKey = makeRenderCacheKey(toolCallId(), props.messageId, props.messageVersion, props.partVersion)
 
     return (
       <div
@@ -379,32 +392,14 @@ export default function ToolCall(props: ToolCallProps) {
         ref={(element) => initializeScrollContainer(element)}
         onScroll={(event) => updateScrollState(toolCallId(), event.currentTarget)}
       >
-        <div class="tool-call-diff-toolbar" role="group" aria-label="Diff view mode">
-          <span class="tool-call-diff-toolbar-label">Diff view</span>
-          <div class="tool-call-diff-toggle">
-            <button
-              type="button"
-              class={`tool-call-diff-mode-button${diffMode() === "split" ? " active" : ""}`}
-              aria-pressed={diffMode() === "split"}
-              onClick={() => handleModeChange("split")}
-            >
-              Split
-            </button>
-            <button
-              type="button"
-              class={`tool-call-diff-mode-button${diffMode() === "unified" ? " active" : ""}`}
-              aria-pressed={diffMode() === "unified"}
-              onClick={() => handleModeChange("unified")}
-            >
-              Unified
-            </button>
-          </div>
+        <div class="tool-call-diff-toolbar">
+          <span class="tool-call-diff-toolbar-label">{toolbarLabel}</span>
         </div>
         <ToolCallDiffViewer
           diffText={payload.diffText}
           filePath={payload.filePath}
           theme={isDark() ? "dark" : "light"}
-          mode={diffMode()}
+          renderCacheKey={cacheKey}
         />
       </div>
     )
@@ -419,8 +414,22 @@ export default function ToolCall(props: ToolCallProps) {
     const isLarge = toolName === "edit" || toolName === "write" || toolName === "patch"
     const messageClass = `message-text tool-call-markdown${isLarge ? " tool-call-markdown-large" : ""}`
     const disableHighlight = state?.status === "running"
+    const cacheKey = makeRenderCacheKey(toolCallId(), props.messageId, props.messageVersion, props.partVersion)
 
     const markdownPart: TextPart = { type: "text", text: content }
+    if (cacheKey) {
+      const cached = getToolRenderCache(cacheKey)
+      if (cached) {
+        markdownPart.renderCache = cached
+      }
+    }
+
+    const handleMarkdownRendered = () => {
+      if (cacheKey) {
+        setToolRenderCache(cacheKey, markdownPart.renderCache)
+      }
+      handleScrollRendered()
+    }
 
     return (
       <div
@@ -432,7 +441,7 @@ export default function ToolCall(props: ToolCallProps) {
           part={markdownPart}
           isDark={isDark()}
           disableHighlight={disableHighlight}
-          onRendered={handleScrollRendered}
+          onRendered={handleMarkdownRendered}
         />
       </div>
     )

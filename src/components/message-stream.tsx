@@ -170,6 +170,9 @@ interface ToolDisplayItem {
   key: string
   toolPart: any
   messageInfo?: any
+  messageId: string
+  messageVersion: number
+  partVersion: number
 }
 
 type DisplayItem = MessageDisplayItem | ToolDisplayItem
@@ -191,14 +194,35 @@ interface ToolCacheEntry {
   item: ToolDisplayItem
 }
 
+interface SessionCache {
+  messageItemCache: Map<string, MessageCacheEntry>
+  toolItemCache: Map<string, ToolCacheEntry>
+}
+
+const sessionCaches = new Map<string, SessionCache>()
+
+function getSessionCache(instanceId: string, sessionId: string): SessionCache {
+  const key = `${instanceId}:${sessionId}`
+  let cache = sessionCaches.get(key)
+  if (!cache) {
+    cache = {
+      messageItemCache: new Map(),
+      toolItemCache: new Map(),
+    }
+    sessionCaches.set(key, cache)
+  }
+  return cache
+}
+
 export default function MessageStream(props: MessageStreamProps) {
   let containerRef: HTMLDivElement | undefined
   const [autoScroll, setAutoScroll] = createSignal(true)
   const [showScrollBottomButton, setShowScrollBottomButton] = createSignal(false)
   const [showScrollTopButton, setShowScrollTopButton] = createSignal(false)
 
-  let messageItemCache = new Map<string, MessageCacheEntry>()
-  let toolItemCache = new Map<string, ToolCacheEntry>()
+  const sessionCache = getSessionCache(props.instanceId, props.sessionId)
+  let messageItemCache = sessionCache.messageItemCache
+  let toolItemCache = sessionCache.toolItemCache
   let scrollAnimationFrame: number | null = null
   let lastKnownScrollTop = 0
 
@@ -334,7 +358,6 @@ export default function MessageStream(props: MessageStreamProps) {
   }
 
   const messageView = createMemo(() => {
-    // Ensure memo reacts to preference changes
     const showThinking = preferences().showThinkingBlocks
 
     const items: DisplayItem[] = []
@@ -358,7 +381,6 @@ export default function MessageStream(props: MessageStreamProps) {
       const message = props.messages[index]
       const messageInfo = props.messagesInfo?.get(message.id)
 
-      // If we hit the revert point, stop rendering messages
       if (props.revert?.messageID && message.id === props.revert.messageID) {
         break
       }
@@ -367,9 +389,9 @@ export default function MessageStream(props: MessageStreamProps) {
 
       const baseDisplayParts = message.displayParts
       const displayParts: MessageDisplayParts =
-        baseDisplayParts && baseDisplayParts.showThinking === showThinking
-          ? baseDisplayParts
-          : computeDisplayParts(message, showThinking)
+        !baseDisplayParts || baseDisplayParts.showThinking !== showThinking
+          ? computeDisplayParts(message, showThinking)
+          : (baseDisplayParts as MessageDisplayParts)
 
       const combinedParts = displayParts.combined
       const version = message.version ?? 0
@@ -424,6 +446,8 @@ export default function MessageStream(props: MessageStreamProps) {
       for (let toolIndex = 0; toolIndex < displayParts.tool.length; toolIndex++) {
         const toolPart = displayParts.tool[toolIndex]
         const toolKey = typeof toolPart?.id === "string" ? toolPart.id : `${message.id}-tool-${toolIndex}`
+        const messageVersion = typeof message.version === "number" ? message.version : 0
+        const partVersion = typeof toolPart?.version === "number" ? toolPart.version : 0
 
         const toolSignature = createToolSignature(message, toolPart, toolIndex, messageInfo)
         const contentKey = createToolContentKey(toolPart, messageInfo)
@@ -434,6 +458,9 @@ export default function MessageStream(props: MessageStreamProps) {
               ...toolEntry.item,
               toolPart,
               messageInfo,
+              messageId: message.id,
+              messageVersion,
+              partVersion,
             }
             toolEntry.toolPart = toolPart
             toolEntry.messageInfo = messageInfo
@@ -444,8 +471,16 @@ export default function MessageStream(props: MessageStreamProps) {
             newToolCache.set(toolKey, toolEntry)
             items.push(updatedItem)
           } else {
+            const cachedItem = toolEntry.item
+            cachedItem.toolPart = toolPart
+            cachedItem.messageInfo = messageInfo
+            cachedItem.messageId = message.id
+            cachedItem.messageVersion = messageVersion
+            cachedItem.partVersion = partVersion
+            toolEntry.toolPart = toolPart
+            toolEntry.messageInfo = messageInfo
             newToolCache.set(toolKey, toolEntry)
-            items.push(toolEntry.item)
+            items.push(cachedItem)
           }
         } else {
           const toolItem: ToolDisplayItem = {
@@ -453,6 +488,9 @@ export default function MessageStream(props: MessageStreamProps) {
             key: toolKey,
             toolPart,
             messageInfo,
+            messageId: message.id,
+            messageVersion,
+            partVersion,
           }
           console.debug("[ToolCall] create", toolKey, toolPart?.state?.status)
           newToolCache.set(toolKey, { toolPart, messageInfo, signature: toolSignature, contentKey, item: toolItem })
@@ -463,6 +501,8 @@ export default function MessageStream(props: MessageStreamProps) {
 
     messageItemCache = newMessageCache
     toolItemCache = newToolCache
+    sessionCache.messageItemCache = messageItemCache
+    sessionCache.toolItemCache = toolItemCache
 
     tokenSegments.push(`items:${items.length}`)
 
@@ -681,7 +721,13 @@ export default function MessageStream(props: MessageStreamProps) {
                     </button>
                   </Show>
                 </div>
-                <ToolCall toolCall={toolPart} toolCallId={item.key} />
+                <ToolCall
+                  toolCall={toolPart}
+                  toolCallId={item.key}
+                  messageId={item.messageId}
+                  messageVersion={item.messageVersion}
+                  partVersion={item.partVersion}
+                />
               </div>
             )
           }}

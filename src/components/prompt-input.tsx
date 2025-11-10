@@ -47,9 +47,11 @@ export default function PromptInput(props: PromptInputProps) {
     const minHeight = lineHeight * MIN_TEXTAREA_LINES
 
     textarea.style.height = "auto"
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), MAX_TEXTAREA_HEIGHT)
+    const scrollHeight = textarea.scrollHeight
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), MAX_TEXTAREA_HEIGHT)
     textarea.style.height = newHeight + "px"
   }
+
 
   const attachments = () => getAttachments(props.instanceId, props.sessionId)
   const instanceAgents = () => agents().get(props.instanceId) || []
@@ -309,7 +311,9 @@ export default function PromptInput(props: PromptInputProps) {
 
   function handleKeyDown(e: KeyboardEvent) {
     const textarea = textareaRef
-    if (!textarea) return
+    if (!textarea) {
+      return
+    }
 
     if (e.key === "Backspace" || e.key === "Delete") {
       const cursorPos = textarea.selectionStart
@@ -478,7 +482,6 @@ export default function PromptInput(props: PromptInputProps) {
       setTimeout(() => {
         adjustTextareaHeight(textarea)
       }, 0)
-      return
     }
   }
 
@@ -497,11 +500,9 @@ export default function PromptInput(props: PromptInputProps) {
 
     try {
       await addToHistory(props.instanceFolder, text)
-
       const updated = await getHistory(props.instanceFolder)
       setHistory(updated)
       setHistoryIndex(-1)
-
       await props.onSend(text, currentAttachments)
     } catch (error) {
       console.error("Failed to send message:", error)

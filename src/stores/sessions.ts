@@ -17,6 +17,27 @@ interface SessionInfo {
   contextUsageTokens: number
 }
 
+interface SessionForkResponse {
+  id: string
+  title?: string
+  parentID?: string | null
+  agent?: string
+  model?: {
+    providerID?: string
+    modelID?: string
+  }
+  time?: {
+    created?: number
+    updated?: number
+  }
+  revert?: {
+    messageID?: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
+}
+
 const DEFAULT_MODEL_OUTPUT_LIMIT = 32_000
 const ALLOWED_TOAST_VARIANTS = new Set<ToastVariant>(["info", "success", "warning", "error"])
 
@@ -103,13 +124,6 @@ const [loading, setLoading] = createSignal({
 
 const [messagesLoaded, setMessagesLoaded] = createSignal<Map<string, Set<string>>>(new Map())
 const [sessionInfoByInstance, setSessionInfoByInstance] = createSignal<Map<string, Map<string, SessionInfo>>>(new Map())
-if (typeof globalThis !== "undefined") {
-  const debugGlobal = globalThis as any
-  debugGlobal.__OPENCODE_DEBUG__ = {
-    ...(debugGlobal.__OPENCODE_DEBUG__ ?? {}),
-    getSessions: () => sessions(),
-  }
-}
 
 // Message index cache structure: instanceId -> sessionId -> { messageIndex, partIndex }
 const sessionIndexes = new Map<
@@ -718,8 +732,8 @@ async function forkSession(
     throw new Error("Failed to fork session: No data returned")
   }
 
-  const info = response.data
-  const forkedSession: Session = {
+  const info = response.data as SessionForkResponse
+  const forkedSession = {
     id: info.id,
     instanceId,
     title: info.title || "Forked Session",
@@ -743,7 +757,7 @@ async function forkSession(
       : undefined,
     messages: [],
     messagesInfo: new Map(),
-  }
+  } as unknown as Session
 
   setSessions((prev) => {
     const next = new Map(prev)

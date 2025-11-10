@@ -7,6 +7,7 @@ import { keyboardRegistry } from "../lib/keyboard-registry"
 import { formatShortcut } from "../lib/keyboard-utils"
 import { showToastNotification } from "../lib/notifications"
 
+
 interface SessionListProps {
   instanceId: string
   sessions: Map<string, Session>
@@ -50,6 +51,10 @@ const SessionList: Component<SessionListProps> = (props) => {
   const [startX, setStartX] = createSignal(0)
   const [startWidth, setStartWidth] = createSignal(DEFAULT_WIDTH)
   const infoShortcut = keyboardRegistry.get("switch-to-info")
+
+  const selectSession = (sessionId: string) => {
+    props.onSelect(sessionId)
+  }
 
   let mouseMoveHandler: ((event: MouseEvent) => void) | null = null
   let mouseUpHandler: (() => void) | null = null
@@ -246,7 +251,7 @@ const SessionList: Component<SessionListProps> = (props) => {
             <div class="session-list-item group">
               <button
                 class={`session-item-base ${props.activeSessionId === "info" ? "session-item-active" : "session-item-inactive"}`}
-                onClick={() => props.onSelect("info")}
+                onClick={() => selectSession("info")}
                 title="Instance Info"
                 role="button"
                 aria-selected={props.activeSessionId === "info"}
@@ -280,7 +285,7 @@ const SessionList: Component<SessionListProps> = (props) => {
                   <div class="session-list-item group">
                     <button
                       class={`session-item-base ${isActive() ? "session-item-active" : "session-item-inactive"}`}
-                      onClick={() => props.onSelect(id)}
+                      onClick={() => selectSession(id)}
                       title={title()}
                       role="button"
                       aria-selected={isActive()}
@@ -338,7 +343,7 @@ const SessionList: Component<SessionListProps> = (props) => {
                   <div class="session-list-item group">
                     <button
                       class={`session-item-base ${isActive() ? "session-item-active" : "session-item-inactive"}`}
-                      onClick={() => props.onSelect(id)}
+                      onClick={() => selectSession(id)}
                       title={title()}
                       role="button"
                       aria-selected={isActive()}

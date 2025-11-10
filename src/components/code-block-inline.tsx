@@ -5,6 +5,9 @@ import { getSharedHighlighter, escapeHtml } from "../lib/markdown"
 
 const inlineLoadedLanguages = new Set<string>()
 
+type LoadLanguageArg = Parameters<Highlighter["loadLanguage"]>[0]
+type CodeToHtmlOptions = Parameters<Highlighter["codeToHtml"]>[1]
+
 interface CodeBlockInlineProps {
   code: string
   language?: string
@@ -41,13 +44,14 @@ export function CodeBlockInline(props: CodeBlockInlineProps) {
     }
 
     try {
+      const language = props.language as LoadLanguageArg
       if (!inlineLoadedLanguages.has(props.language)) {
-        await highlighter.loadLanguage(props.language)
+        await highlighter.loadLanguage(language)
         inlineLoadedLanguages.add(props.language)
       }
 
       const highlighted = highlighter.codeToHtml(props.code, {
-        lang: props.language,
+        lang: props.language as CodeToHtmlOptions["lang"],
         theme: isDark() ? "github-dark" : "github-light",
       })
       setHtml(highlighted)
