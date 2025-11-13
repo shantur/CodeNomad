@@ -302,19 +302,14 @@ const ContextUsagePanel: Component<{ instanceId: string; sessionId: string }> = 
         contextWindow: 0,
         isSubscriptionModel: false,
         contextUsageTokens: 0,
+        contextUsagePercent: null,
       },
   )
 
   const tokens = createMemo(() => info().tokens)
   const contextUsageTokens = createMemo(() => info().contextUsageTokens ?? 0)
   const contextWindow = createMemo(() => info().contextWindow)
-  const percentage = createMemo(() => {
-    const windowSize = contextWindow()
-    if (!windowSize || windowSize <= 0) return null
-    const usage = contextUsageTokens()
-    const percent = Math.round((usage / windowSize) * 100)
-    return Math.min(100, Math.max(0, percent))
-  })
+  const contextUsagePercent = createMemo(() => info().contextUsagePercent)
 
   const costLabel = createMemo(() => {
     if (info().isSubscriptionModel || info().cost <= 0) return "Included in plan"
@@ -333,7 +328,7 @@ const ContextUsagePanel: Component<{ instanceId: string; sessionId: string }> = 
       <div class="mt-4">
         <div class="flex items-center justify-between mb-1">
           <div class="text-xs font-semibold text-primary/70 uppercase tracking-wide">Context window usage</div>
-          <div class="text-sm font-medium text-primary">{percentage() !== null ? `${percentage()}%` : "--"}</div>
+          <div class="text-sm font-medium text-primary">{contextUsagePercent() !== null ? `${contextUsagePercent()}%` : "--"}</div>
         </div>
         <div class="text-sm text-primary/90">
           {contextWindow()
@@ -344,7 +339,7 @@ const ContextUsagePanel: Component<{ instanceId: string; sessionId: string }> = 
       <div class="mt-3 h-1.5 rounded-full bg-base relative overflow-hidden">
         <div
           class="absolute inset-y-0 left-0 rounded-full bg-accent-primary transition-[width]"
-          style={{ width: percentage() === null ? "0%" : `${percentage()}%` }}
+          style={{ width: contextUsagePercent() === null ? "0%" : `${contextUsagePercent()}%` }}
         />
       </div>
     </div>

@@ -34,6 +34,7 @@ interface SessionInfo {
   contextWindow: number
   isSubscriptionModel: boolean
   contextUsageTokens: number
+  contextUsagePercent: number | null
 }
 
 interface SessionForkResponse {
@@ -552,8 +553,9 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
   let isSubscriptionModel = false
   let modelID = ""
   let providerID = ""
-  let inputTokensForUsage = 0
-  let cacheReadTokensForUsage = 0
+  let actualUsageTokens = 0
+  let contextUsagePercent: number | null = null
+  let hasContextUsage = false
 
   // Calculate from last assistant message in this session only
   if (session.messagesInfo.size > 0) {
@@ -565,23 +567,23 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
         const usage = info.tokens
 
         if (usage.output > 0) {
+          const inputTokens = usage.input || 0
+          const reasoningTokens = usage.reasoning || 0
+          const cacheReadTokens = usage.cache?.read || 0
+          const cacheWriteTokens = usage.cache?.write || 0
+          const outputTokens = usage.output || 0
+
           if (info.summary) {
             // If summary message, only count output tokens and stop (like TUI)
-            tokens = usage.output || 0
-            cost = info.cost || 0
+            tokens = outputTokens
           } else {
             // Regular message - count all token types (like TUI)
-            tokens =
-              (usage.input || 0) +
-              (usage.cache?.read || 0) +
-              (usage.cache?.write || 0) +
-              (usage.output || 0) +
-              (usage.reasoning || 0)
-            cost = info.cost || 0
+            tokens = inputTokens + cacheReadTokens + cacheWriteTokens + outputTokens + reasoningTokens
           }
 
-          inputTokensForUsage = usage.input || 0
-          cacheReadTokensForUsage = usage.cache?.read || 0
+          cost = info.cost || 0
+          actualUsageTokens = tokens
+          hasContextUsage = inputTokens + cacheReadTokens + cacheWriteTokens > 0
 
           // Get model info identifiers for context lookups
           modelID = info.modelID || ""
@@ -625,7 +627,20 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
     }
   }
 
-  const contextUsageTokens = inputTokensForUsage + cacheReadTokensForUsage + modelOutputLimit
+  const outputBudget = Math.min(modelOutputLimit, DEFAULT_MODEL_OUTPUT_LIMIT)
+  let contextUsageTokens = 0
+
+  if (hasContextUsage && actualUsageTokens > 0) {
+    contextUsageTokens = actualUsageTokens + outputBudget
+    if (contextWindow > 0) {
+      const percent = Math.round((contextUsageTokens / contextWindow) * 100)
+      contextUsagePercent = Math.min(100, Math.max(0, percent))
+    } else {
+      contextUsagePercent = null
+    }
+  } else {
+    contextUsagePercent = contextWindow > 0 ? 0 : null
+  }
 
   setSessionInfoByInstance((prev) => {
     const next = new Map(prev)
@@ -636,6 +651,7 @@ function updateSessionInfo(instanceId: string, sessionId: string) {
       contextWindow,
       isSubscriptionModel,
       contextUsageTokens,
+      contextUsagePercent,
     })
     next.set(instanceId, instanceInfo)
     return next
@@ -708,11 +724,8 @@ async function createSession(instanceId: string, agent?: string): Promise<Sessio
     const initialProvider = instanceProviders.find((p) => p.id === session.model.providerId)
     const initialModel = initialProvider?.models.find((m) => m.id === session.model.modelId)
     const initialContextWindow = initialModel?.limit?.context ?? 0
-    const initialOutputLimit =
-      initialModel?.limit?.output && initialModel.limit.output > 0
-        ? initialModel.limit.output
-        : DEFAULT_MODEL_OUTPUT_LIMIT
     const initialSubscriptionModel = initialModel?.cost?.input === 0 && initialModel?.cost?.output === 0
+    const initialContextPercent = initialContextWindow > 0 ? 0 : null
 
     setSessionInfoByInstance((prev) => {
       const next = new Map(prev)
@@ -722,7 +735,8 @@ async function createSession(instanceId: string, agent?: string): Promise<Sessio
         cost: 0,
         contextWindow: initialContextWindow,
         isSubscriptionModel: Boolean(initialSubscriptionModel),
-        contextUsageTokens: initialOutputLimit,
+        contextUsageTokens: 0,
+        contextUsagePercent: initialContextPercent,
       })
       next.set(instanceId, instanceInfo)
       return next
@@ -810,9 +824,8 @@ async function forkSession(
   const forkProvider = instanceProviders.find((p) => p.id === forkedSession.model.providerId)
   const forkModel = forkProvider?.models.find((m) => m.id === forkedSession.model.modelId)
   const forkContextWindow = forkModel?.limit?.context ?? 0
-  const forkOutputLimit =
-    forkModel?.limit?.output && forkModel.limit.output > 0 ? forkModel.limit.output : DEFAULT_MODEL_OUTPUT_LIMIT
   const forkSubscriptionModel = forkModel?.cost?.input === 0 && forkModel?.cost?.output === 0
+  const forkContextPercent = forkContextWindow > 0 ? 0 : null
 
   setSessionInfoByInstance((prev) => {
     const next = new Map(prev)
@@ -822,7 +835,8 @@ async function forkSession(
       cost: 0,
       contextWindow: forkContextWindow,
       isSubscriptionModel: Boolean(forkSubscriptionModel),
-      contextUsageTokens: forkOutputLimit,
+      contextUsageTokens: 0,
+      contextUsagePercent: forkContextPercent,
     })
     next.set(instanceId, instanceInfo)
     return next

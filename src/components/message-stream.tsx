@@ -31,14 +31,7 @@ import ToolCall from "./tool-call"
 import { sseManager } from "../lib/sse-manager"
 import Kbd from "./kbd"
 import { preferences } from "../stores/preferences"
-import {
-  providers,
-  getSessionInfo,
-  computeDisplayParts,
-  sessions,
-  setActiveSession,
-  setActiveParentSession,
-} from "../stores/sessions"
+import { getSessionInfo, computeDisplayParts, sessions, setActiveSession, setActiveParentSession } from "../stores/sessions"
 import { setActiveInstanceId } from "../stores/instances"
 
 const SCROLL_OFFSET = 64
@@ -76,75 +69,6 @@ function navigateToTaskSession(location: TaskSessionLocation) {
   }
 }
 
-// Calculate session tokens and cost from messagesInfo (matches TUI logic)
-function calculateSessionInfo(messagesInfo?: Map<string, MessageInfo>, instanceId?: string) {
-  if (!messagesInfo || messagesInfo.size === 0)
-    return { tokens: 0, cost: 0, contextWindow: 0, isSubscriptionModel: false }
-
-  let tokens = 0
-  let cost = 0
-  let contextWindow = 0
-  let modelID = ""
-  let providerID = ""
-  let isSubscriptionModel = false
-
-  // Go backwards through messages to find the last relevant assistant message (like TUI)
-  const messageArray = Array.from(messagesInfo.values()).reverse()
-
-  for (const info of messageArray) {
-    if (!info) continue
-    if (info.role === "assistant" && info.tokens) {
-      const usage = info.tokens
-
-      if (usage.output && usage.output > 0) {
-        if (info.summary) {
-          // If summary message, only count output tokens and stop (like TUI)
-          tokens = usage.output || 0
-          cost = info.cost || 0
-        } else {
-          // Regular message - count all token types (like TUI)
-          tokens =
-            (usage.input || 0) +
-            (usage.cache?.read || 0) +
-            (usage.cache?.write || 0) +
-            (usage.output || 0) +
-            (usage.reasoning || 0)
-          cost = info.cost || 0
-        }
-
-        // Get model info for context window and subscription check
-        modelID = info.modelID || ""
-        providerID = info.providerID || ""
-        isSubscriptionModel = cost === 0
-
-        break
-      }
-    }
-  }
-
-  // Try to get context window from providers
-  if (instanceId && modelID && providerID) {
-    const instanceProviders = providers().get(instanceId) || []
-    console.log("[calculateSessionInfo] instanceProviders:", instanceProviders)
-    console.log("[calculateSessionInfo] looking for providerID:", providerID, "modelID:", modelID)
-    const provider = instanceProviders.find((p) => p.id === providerID)
-    console.log("[calculateSessionInfo] found provider:", provider)
-    if (provider) {
-      const model = provider.models.find((m) => m.id === modelID)
-      console.log("[calculateSessionInfo] found model:", model)
-      if (model?.limit?.context) {
-        contextWindow = model.limit.context
-      }
-      // Check if it's a subscription model (cost is 0 for both input and output)
-      if (model?.cost?.input === 0 && model?.cost?.output === 0) {
-        isSubscriptionModel = true
-      }
-    }
-  }
-
-  return { tokens, cost, contextWindow, isSubscriptionModel }
-}
-
 // Format tokens like TUI (e.g., "110K", "1.2M")
 function formatTokens(tokens: number): string {
   if (tokens >= 1000000) {
@@ -156,16 +80,15 @@ function formatTokens(tokens: number): string {
 }
 
 // Format session info for the session view header
-function formatSessionInfo(tokens: number, _cost: number, contextWindow: number, _isSubscriptionModel: boolean): string {
-  const tokensStr = formatTokens(tokens)
-
+function formatSessionInfo(usageTokens: number, contextWindow: number, usagePercent: number | null): string {
   if (contextWindow > 0) {
     const windowStr = formatTokens(contextWindow)
-    const percentage = Math.min(100, Math.max(0, Math.round((tokens / contextWindow) * 100)))
-    return `${tokensStr} of ${windowStr} (${percentage}%)`
+    const usageStr = formatTokens(usageTokens)
+    const percent = usagePercent ?? Math.min(100, Math.max(0, Math.round((usageTokens / contextWindow) * 100)))
+    return `${usageStr} of ${windowStr} (${percent}%)`
   }
 
-  return tokensStr
+  return formatTokens(usageTokens)
 }
 
 interface MessageStreamProps {
@@ -274,30 +197,20 @@ export default function MessageStream(props: MessageStreamProps) {
     return `${toolPart.id}:${version}:${status}`
   }
 
-  const sessionInfo = createMemo(() => {
-    return (
-      getSessionInfo(props.instanceId, props.sessionId) || {
-        tokens: 0,
-        cost: 0,
-        contextWindow: 0,
-        isSubscriptionModel: false,
-      }
-    )
-  })
-
-  const formattedSessionInfo = createMemo(() => {
-    const sessionInfo = getSessionInfo(props.instanceId, props.sessionId) || {
+  const sessionInfo = createMemo(() =>
+    getSessionInfo(props.instanceId, props.sessionId) ?? {
       tokens: 0,
       cost: 0,
       contextWindow: 0,
       isSubscriptionModel: false,
-    }
-    return formatSessionInfo(
-      sessionInfo.tokens,
-      sessionInfo.cost,
-      sessionInfo.contextWindow,
-      sessionInfo.isSubscriptionModel,
-    )
+      contextUsageTokens: 0,
+      contextUsagePercent: null,
+    },
+  )
+
+  const formattedSessionInfo = createMemo(() => {
+    const info = sessionInfo()
+    return formatSessionInfo(info.contextUsageTokens, info.contextWindow, info.contextUsagePercent)
   })
 
   function isNearBottom(element: HTMLDivElement, offset = SCROLL_OFFSET) {
