@@ -36,6 +36,7 @@ import { setActiveInstanceId } from "../stores/instances"
 
 const codeNomadLogo = new URL("../../images/CodeNomad-Icon.png", import.meta.url).href
 const SCROLL_OFFSET = 64
+const SCROLL_DIRECTION_THRESHOLD = 10
 
 interface TaskSessionLocation {
   sessionId: string
@@ -265,13 +266,13 @@ export default function MessageStream(props: MessageStreamProps) {
       if (!containerRef) return
 
       const currentScrollTop = containerRef.scrollTop
-      const movingUp = currentScrollTop < lastKnownScrollTop - 1
+      const movingUp = currentScrollTop < lastKnownScrollTop - SCROLL_DIRECTION_THRESHOLD
       lastKnownScrollTop = currentScrollTop
 
       const atBottom = isNearBottom(containerRef)
 
       if (isUserScroll) {
-        if ((movingUp || !atBottom) && autoScroll()) {
+        if (movingUp && !atBottom && autoScroll()) {
           setAutoScroll(false)
         } else if (!movingUp && atBottom && !autoScroll()) {
           setAutoScroll(true)
