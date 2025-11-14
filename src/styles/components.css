@@ -1829,8 +1829,12 @@ button.button-primary:disabled {
   color: var(--text-primary);
 }
 
-.modal-item:hover {
+.modal-list-container[data-pointer-mode="pointer"] .modal-item:hover {
   background-color: var(--surface-hover);
+}
+
+.modal-list-container[data-pointer-mode="keyboard"] .modal-item:hover:not(.modal-item-highlight) {
+  background-color: inherit;
 }
 
 .modal-item-highlight {

@@ -1,4 +1,4 @@
-import { Component, createSignal, For, Show, onMount, createEffect } from "solid-js"
+import { Component, createSignal, For, Show, createEffect, createMemo } from "solid-js"
 import { Dialog } from "@kobalte/core/dialog"
 import type { Command } from "../lib/commands"
 import Kbd from "./kbd"
@@ -25,70 +25,104 @@ function buildShortcutString(shortcut: Command["shortcut"]): string {
 
 const CommandPalette: Component<CommandPaletteProps> = (props) => {
   const [query, setQuery] = createSignal("")
-  const [selectedIndex, setSelectedIndex] = createSignal(0)
+  const [selectedCommandId, setSelectedCommandId] = createSignal<string | null>(null)
+  const [isPointerSelecting, setIsPointerSelecting] = createSignal(false)
   let inputRef: HTMLInputElement | undefined
   let listRef: HTMLDivElement | undefined
 
-  const filteredCommands = () => {
-    const q = query().toLowerCase()
-    if (!q) return props.commands
+  const categoryOrder = ["Instance", "Session", "Agent & Model", "Input & Focus", "System", "Other"] as const
 
-    return props.commands.filter((cmd) => {
-      const label = typeof cmd.label === "function" ? cmd.label() : cmd.label
-      const labelMatch = label.toLowerCase().includes(q)
-      const descMatch = cmd.description.toLowerCase().includes(q)
-      const keywordMatch = cmd.keywords?.some((k) => k.toLowerCase().includes(q))
-      const categoryMatch = cmd.category?.toLowerCase().includes(q)
-      return labelMatch || descMatch || keywordMatch || categoryMatch
-    })
-  }
+  type CommandGroup = { category: string; commands: Command[]; startIndex: number }
+  type ProcessedCommands = { groups: CommandGroup[]; ordered: Command[] }
 
-  const groupedCommands = () => {
-    const filtered = filteredCommands()
-    const groups = new Map<string, Command[]>()
+  const processedCommands = createMemo<ProcessedCommands>(() => {
+    const source = props.commands ?? []
+    const q = query().trim().toLowerCase()
 
+    const filtered = q
+      ? source.filter((cmd) => {
+          const label = typeof cmd.label === "function" ? cmd.label() : cmd.label
+          const labelMatch = label.toLowerCase().includes(q)
+          const descMatch = cmd.description.toLowerCase().includes(q)
+          const keywordMatch = cmd.keywords?.some((k) => k.toLowerCase().includes(q))
+          const categoryMatch = cmd.category?.toLowerCase().includes(q)
+          return labelMatch || descMatch || keywordMatch || categoryMatch
+        })
+      : source
+
+    const groupsMap = new Map<string, Command[]>()
     for (const cmd of filtered) {
       const category = cmd.category || "Other"
-      if (!groups.has(category)) {
-        groups.set(category, [])
-      }
-      groups.get(category)!.push(cmd)
-    }
-
-    const categoryOrder = ["Instance", "Session", "Agent & Model", "Input & Focus", "System", "Other"]
-    const sorted = new Map<string, Command[]>()
-    for (const cat of categoryOrder) {
-      if (groups.has(cat)) {
-        sorted.set(cat, groups.get(cat)!)
-      }
-    }
-    for (const [cat, cmds] of groups) {
-      if (!sorted.has(cat)) {
-        sorted.set(cat, cmds)
+      const list = groupsMap.get(category)
+      if (list) {
+        list.push(cmd)
+      } else {
+        groupsMap.set(category, [cmd])
       }
     }
 
-    return sorted
-  }
+    const groups: CommandGroup[] = []
+    const ordered: Command[] = []
+    const processedCategories = new Set<string>()
+
+    const addGroup = (category: string) => {
+      const cmds = groupsMap.get(category)
+      if (!cmds || cmds.length === 0 || processedCategories.has(category)) return
+      groups.push({ category, commands: cmds, startIndex: ordered.length })
+      ordered.push(...cmds)
+      processedCategories.add(category)
+    }
+
+    for (const category of categoryOrder) {
+      addGroup(category)
+    }
+
+    for (const [category] of groupsMap) {
+      addGroup(category)
+    }
+
+    return { groups, ordered }
+  })
+
+  const groupedCommandList = () => processedCommands().groups
+  const orderedCommands = () => processedCommands().ordered
+  const selectedIndex = createMemo(() => {
+    const ordered = orderedCommands()
+    if (ordered.length === 0) return -1
+    const id = selectedCommandId()
+    if (!id) return 0
+    const index = ordered.findIndex((cmd) => cmd.id === id)
+    return index >= 0 ? index : 0
+  })
 
   createEffect(() => {
     if (props.open) {
       setQuery("")
-      setSelectedIndex(0)
+      setSelectedCommandId(null)
+      setIsPointerSelecting(false)
       setTimeout(() => inputRef?.focus(), 100)
     }
   })
-
+ 
   createEffect(() => {
-    const max = Math.max(0, filteredCommands().length - 1)
-    if (selectedIndex() > max) {
-      setSelectedIndex(max)
+    const ordered = orderedCommands()
+    if (ordered.length === 0) {
+      if (selectedCommandId() !== null) {
+        setSelectedCommandId(null)
+      }
+      return
+    }
+ 
+    const currentId = selectedCommandId()
+    if (!currentId || !ordered.some((cmd) => cmd.id === currentId)) {
+      setSelectedCommandId(ordered[0].id)
     }
   })
 
+
   createEffect(() => {
     const index = selectedIndex()
-    if (!listRef) return
+    if (!listRef || index < 0) return
 
     const selectedButton = listRef.querySelector(`[data-command-index="${index}"]`) as HTMLElement
     if (selectedButton) {
@@ -97,24 +131,43 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
   })
 
   function handleKeyDown(e: KeyboardEvent) {
-    const filtered = filteredCommands()
+    const ordered = orderedCommands()
+
+    if (e.key === "Escape") {
+      e.preventDefault()
+      e.stopPropagation()
+      props.onClose()
+      return
+    }
+
+    if (ordered.length === 0) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Enter") {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+      return
+    }
 
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      setSelectedIndex((i) => Math.min(i + 1, filtered.length - 1))
+      e.stopPropagation()
+      setIsPointerSelecting(false)
+      const current = selectedIndex()
+      const nextIndex = Math.min((current < 0 ? 0 : current) + 1, ordered.length - 1)
+      setSelectedCommandId(ordered[nextIndex]?.id ?? null)
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
-      if (filtered.length === 0) return
-      setSelectedIndex((i) => (i <= 0 ? filtered.length - 1 : i - 1))
+      e.stopPropagation()
+      setIsPointerSelecting(false)
+      const current = selectedIndex()
+      const nextIndex = current <= 0 ? ordered.length - 1 : current - 1
+      setSelectedCommandId(ordered[nextIndex]?.id ?? null)
     } else if (e.key === "Enter") {
       e.preventDefault()
-      const selected = filtered[selectedIndex()]
-      if (selected) {
-        props.onExecute(selected.id)
-        props.onClose()
-      }
-    } else if (e.key === "Escape") {
-      e.preventDefault()
+      e.stopPropagation()
+      const index = selectedIndex()
+      if (index < 0 || index >= ordered.length) return
+      props.onExecute(ordered[index].id)
       props.onClose()
     }
   }
@@ -124,7 +177,12 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
     props.onClose()
   }
 
+  function handlePointerLeave() {
+    setIsPointerSelecting(false)
+  }
+ 
   return (
+
     <Dialog open={props.open} onOpenChange={(open) => !open && props.onClose()}>
       <Dialog.Portal>
         <Dialog.Overlay class="modal-overlay" />
@@ -152,7 +210,7 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
                   value={query()}
                   onInput={(e) => {
                     setQuery(e.currentTarget.value)
-                    setSelectedIndex(0)
+                    setSelectedCommandId(null)
                   }}
                   placeholder="Type a command or search..."
                   class="modal-search-input"
@@ -160,57 +218,60 @@ const CommandPalette: Component<CommandPaletteProps> = (props) => {
               </div>
             </div>
 
-            <div ref={listRef} class="modal-list-container">
+            <div
+              ref={listRef}
+              class="modal-list-container"
+              data-pointer-mode={isPointerSelecting() ? "pointer" : "keyboard"}
+              onPointerLeave={handlePointerLeave}
+            >
               <Show
-                when={filteredCommands().length > 0}
+                when={orderedCommands().length > 0}
                 fallback={<div class="modal-empty-state">No commands found for "{query()}"</div>}
               >
-                <For each={Array.from(groupedCommands().entries())}>
-                  {([category, commands]) => {
-                    let globalIndex = 0
-                    for (const [cat, cmds] of groupedCommands().entries()) {
-                      if (cat === category) break
-                      globalIndex += cmds.length
-                    }
-
-                    return (
-                      <div class="py-2">
-                        <div class="modal-section-header">
-                          {category}
-                        </div>
-                        <For each={commands}>
-                          {(command, localIndex) => {
-                            const commandIndex = globalIndex + localIndex()
-                            return (
-                              <button
-                                type="button"
-                                data-command-index={commandIndex}
-                                onClick={() => handleCommandClick(command.id)}
-                                class={`modal-item ${
-                                  commandIndex === selectedIndex() ? "modal-item-highlight" : ""
-                                }`}
-                                onMouseEnter={() => setSelectedIndex(commandIndex)}
-                              >
-                                <div class="flex-1 min-w-0">
-                                  <div class="modal-item-label">
-                                    {typeof command.label === "function" ? command.label() : command.label}
-                                  </div>
-                                  <div class="modal-item-description">
-                                    {command.description}
-                                  </div>
-                                </div>
-                                <Show when={command.shortcut}>
-                                  <div class="mt-1">
-                                    <Kbd shortcut={buildShortcutString(command.shortcut)} />
-                                  </div>
-                                </Show>
-                              </button>
-                            )
-                          }}
-                        </For>
+                <For each={groupedCommandList()}>
+                  {(group) => (
+                    <div class="py-2">
+                      <div class="modal-section-header">
+                        {group.category}
                       </div>
-                    )
-                  }}
+                      <For each={group.commands}>
+                        {(command, localIndex) => {
+                          const commandIndex = group.startIndex + localIndex()
+                          return (
+                            <button
+                              type="button"
+                              data-command-index={commandIndex}
+                              onClick={() => handleCommandClick(command.id)}
+                              class={`modal-item ${selectedCommandId() === command.id ? "modal-item-highlight" : ""}`}
+                              onPointerMove={(event) => {
+                                if (event.movementX === 0 && event.movementY === 0) return
+                                if (event.pointerType === "mouse" || event.pointerType === "pen" || event.pointerType === "touch") {
+                                  if (!isPointerSelecting()) {
+                                    setIsPointerSelecting(true)
+                                  }
+                                  setSelectedCommandId(command.id)
+                                }
+                              }}
+                            >
+                              <div class="flex-1 min-w-0">
+                                <div class="modal-item-label">
+                                  {typeof command.label === "function" ? command.label() : command.label}
+                                </div>
+                                <div class="modal-item-description">
+                                  {command.description}
+                                </div>
+                              </div>
+                              <Show when={command.shortcut}>
+                                <div class="mt-1">
+                                  <Kbd shortcut={buildShortcutString(command.shortcut)} />
+                                </div>
+                              </Show>
+                            </button>
+                          )
+                        }}
+                      </For>
+                    </div>
+                  )}
                 </For>
               </Show>
             </div>

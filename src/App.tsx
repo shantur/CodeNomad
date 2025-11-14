@@ -351,10 +351,17 @@ const App: Component = () => {
   const { isDark } = useTheme()
   const commandRegistry = createCommandRegistry()
   const [escapeInDebounce, setEscapeInDebounce] = createSignal(false)
+  const [paletteCommands, setPaletteCommands] = createSignal<Command[]>([])
+
+  const refreshCommandPalette = () => {
+    setPaletteCommands(commandRegistry.getAll())
+  }
 
   createEffect(() => {
     void initMarkdown(isDark()).catch(console.error)
   })
+
+
 
   const activeInstance = createMemo(() => getActiveInstance())
 
@@ -882,11 +889,15 @@ const App: Component = () => {
         console.log("Show help modal (not implemented)")
       },
     })
+
+    refreshCommandPalette()
   }
 
   function handleExecuteCommand(commandId: string) {
     commandRegistry.execute(commandId)
   }
+
+
 
   onMount(() => {
     setEscapeStateChangeHandler(setEscapeInDebounce)
@@ -1166,7 +1177,7 @@ const App: Component = () => {
       <CommandPalette
         open={isCommandPaletteOpen()}
         onClose={hideCommandPalette}
-        commands={commandRegistry.getAll()}
+        commands={paletteCommands()}
         onExecute={handleExecuteCommand}
       />
 
