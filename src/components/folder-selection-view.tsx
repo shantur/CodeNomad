@@ -9,12 +9,14 @@ const codeNomadLogo = new URL("../../images/CodeNomad-Icon.png", import.meta.url
 interface FolderSelectionViewProps {
   onSelectFolder: (folder?: string, binaryPath?: string) => void
   isLoading?: boolean
+  advancedSettingsOpen?: boolean
+  onAdvancedSettingsOpen?: () => void
+  onAdvancedSettingsClose?: () => void
 }
 
 const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
   const [selectedIndex, setSelectedIndex] = createSignal(0)
   const [focusMode, setFocusMode] = createSignal<"recent" | "new" | null>("recent")
-  const [isAdvancedModalOpen, setIsAdvancedModalOpen] = createSignal(false)
   const [selectedBinary, setSelectedBinary] = createSignal(preferences().lastUsedBinary || "opencode")
   let recentListRef: HTMLDivElement | undefined
  
@@ -320,7 +322,7 @@ const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
               {/* Advanced settings section */}
               <div class="panel-section w-full">
                 <button
-                  onClick={() => setIsAdvancedModalOpen(true)}
+                  onClick={() => props.onAdvancedSettingsOpen?.()}
                   class="panel-section-header w-full justify-between"
                 >
                   <div class="flex items-center gap-2">
@@ -369,8 +371,8 @@ const FolderSelectionView: Component<FolderSelectionViewProps> = (props) => {
       </div>
 
       <AdvancedSettingsModal
-        open={isAdvancedModalOpen()}
-        onClose={() => setIsAdvancedModalOpen(false)}
+        open={Boolean(props.advancedSettingsOpen)}
+        onClose={() => props.onAdvancedSettingsClose?.()}
         selectedBinary={selectedBinary()}
         onBinaryChange={handleBinaryChange}
         isLoading={props.isLoading}

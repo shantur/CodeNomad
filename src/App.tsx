@@ -1,4 +1,5 @@
 import { Component, onMount, onCleanup, Show, createMemo, createEffect, createSignal } from "solid-js"
+import { Dialog } from "@kobalte/core/dialog"
 import { Toaster } from "solid-toast"
 import type { Session } from "./types/session"
 import type { Attachment } from "./types/attachment"
@@ -352,6 +353,29 @@ const App: Component = () => {
   const commandRegistry = createCommandRegistry()
   const [escapeInDebounce, setEscapeInDebounce] = createSignal(false)
   const [paletteCommands, setPaletteCommands] = createSignal<Command[]>([])
+  const [launchErrorBinary, setLaunchErrorBinary] = createSignal<string | null>(null)
+  const [isAdvancedSettingsOpen, setIsAdvancedSettingsOpen] = createSignal(false)
+
+  const launchErrorPath = () => {
+    const value = launchErrorBinary()
+    if (!value) return "opencode"
+    return value.trim() || "opencode"
+  }
+
+  const isMissingBinaryError = (error: unknown): boolean => {
+    if (!error) return false
+    const message = typeof error === "string" ? error : error instanceof Error ? error.message : String(error)
+    const normalized = message.toLowerCase()
+    return (
+      normalized.includes("opencode binary not found") ||
+      normalized.includes("binary not found") ||
+      normalized.includes("no such file or directory") ||
+      normalized.includes("binary is not executable") ||
+      normalized.includes("enoent")
+    )
+  }
+
+  const clearLaunchError = () => setLaunchErrorBinary(null)
 
   const refreshCommandPalette = () => {
     setPaletteCommands(commandRegistry.getAll())
@@ -361,15 +385,12 @@ const App: Component = () => {
     void initMarkdown(isDark()).catch(console.error)
   })
 
-
-
   const activeInstance = createMemo(() => getActiveInstance())
 
   const activeSessions = createMemo(() => {
     const instance = activeInstance()
     if (!instance) return new Map()
     const instanceId = instance.id
-
     const parentId = activeParentSessionId().get(instanceId)
     if (!parentId) return new Map()
 
@@ -382,6 +403,7 @@ const App: Component = () => {
     if (!instance) return null
     return activeSessionId().get(instance.id) || null
   })
+
 
   const activeSessionForInstance = createMemo(() => {
     const sessionId = activeSessionIdForInstance()
@@ -408,6 +430,7 @@ const App: Component = () => {
 
   async function handleSelectFolder(folderPath?: string, binaryPath?: string) {
     setIsSelectingFolder(true)
+    const selectedBinary = binaryPath || preferences().lastUsedBinary || "opencode"
     try {
       let folder: string | null | undefined = folderPath
 
@@ -418,17 +441,36 @@ const App: Component = () => {
         }
       }
 
+      if (!folder) {
+        return
+      }
+
       addRecentFolder(folder)
-      const instanceId = await createInstance(folder, binaryPath)
+      clearLaunchError()
+      const instanceId = await createInstance(folder, selectedBinary)
       setHasInstances(true)
       setShowFolderSelection(false)
+      setIsAdvancedSettingsOpen(false)
 
       console.log("Created instance:", instanceId, "Port:", instances().get(instanceId)?.port)
     } catch (error) {
+      clearLaunchError()
+      if (isMissingBinaryError(error)) {
+        setLaunchErrorBinary(selectedBinary)
+      }
       console.error("Failed to create instance:", error)
     } finally {
       setIsSelectingFolder(false)
     }
+  }
+
+  function handleLaunchErrorClose() {
+    clearLaunchError()
+  }
+
+  function handleLaunchErrorAdvanced() {
+    clearLaunchError()
+    setIsAdvancedSettingsOpen(true)
   }
 
   function handleNewInstanceRequest() {
@@ -1055,6 +1097,41 @@ const App: Component = () => {
         reason={disconnectedInstance()?.reason}
         onClose={handleDisconnectedInstanceClose}
       />
+
+      <Dialog open={Boolean(launchErrorBinary())} modal>
+        <Dialog.Portal>
+          <Dialog.Overlay class="modal-overlay" />
+          <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <Dialog.Content class="modal-surface w-full max-w-md p-6 flex flex-col gap-6">
+              <div>
+                <Dialog.Title class="text-xl font-semibold text-primary">Unable to launch OpenCode</Dialog.Title>
+                <Dialog.Description class="text-sm text-secondary mt-2">
+                  Install the OpenCode CLI and make sure it is available in your PATH, or pick a custom binary from
+                  Advanced Settings.
+                </Dialog.Description>
+              </div>
+
+              <div class="rounded-lg border border-base bg-surface-secondary p-4">
+                <p class="text-xs font-medium text-muted uppercase tracking-wide mb-1">Binary path</p>
+                <p class="text-sm font-mono text-primary break-all">{launchErrorPath()}</p>
+              </div>
+
+              <div class="flex justify-end gap-2">
+                <button
+                  type="button"
+                  class="selector-button selector-button-secondary"
+                  onClick={handleLaunchErrorAdvanced}
+                >
+                  Open Advanced Settings
+                </button>
+                <button type="button" class="selector-button selector-button-primary" onClick={handleLaunchErrorClose}>
+                  Close
+                </button>
+              </div>
+            </Dialog.Content>
+          </div>
+        </Dialog.Portal>
+      </Dialog>
       <div class="h-screen w-screen flex flex-col">
         <Show
           when={!hasInstances()}
@@ -1171,7 +1248,13 @@ const App: Component = () => {
           </>
         }
       >
-        <FolderSelectionView onSelectFolder={handleSelectFolder} isLoading={isSelectingFolder()} />
+        <FolderSelectionView
+          onSelectFolder={handleSelectFolder}
+          isLoading={isSelectingFolder()}
+          advancedSettingsOpen={isAdvancedSettingsOpen()}
+          onAdvancedSettingsOpen={() => setIsAdvancedSettingsOpen(true)}
+          onAdvancedSettingsClose={() => setIsAdvancedSettingsOpen(false)}
+        />
       </Show>
 
       <CommandPalette
@@ -1185,7 +1268,11 @@ const App: Component = () => {
         <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
           <div class="w-full h-full relative">
             <button
-              onClick={() => setShowFolderSelection(false)}
+              onClick={() => {
+                setShowFolderSelection(false)
+                setIsAdvancedSettingsOpen(false)
+                clearLaunchError()
+              }}
               class="absolute top-4 right-4 z-10 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               title="Close (Esc)"
             >
@@ -1198,7 +1285,13 @@ const App: Component = () => {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-            <FolderSelectionView onSelectFolder={handleSelectFolder} isLoading={isSelectingFolder()} />
+            <FolderSelectionView
+              onSelectFolder={handleSelectFolder}
+              isLoading={isSelectingFolder()}
+              advancedSettingsOpen={isAdvancedSettingsOpen()}
+              onAdvancedSettingsOpen={() => setIsAdvancedSettingsOpen(true)}
+              onAdvancedSettingsClose={() => setIsAdvancedSettingsOpen(false)}
+            />
           </div>
         </div>
       </Show>
