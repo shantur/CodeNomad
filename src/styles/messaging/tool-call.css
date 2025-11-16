@@ -401,6 +401,165 @@
   color: var(--text-muted);
 }
 
+.tool-call-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md);
+  border-top: 1px solid var(--border-base);
+  background-color: var(--surface-base);
+}
+
+.tool-call-diagnostics-wrapper {
+  border-top: 1px solid var(--border-base);
+  background-color: var(--surface-base);
+  margin-top: var(--space-md);
+}
+
+.tool-call-diagnostics-heading {
+  @apply flex items-center gap-2 p-2 w-full border-none cursor-pointer text-left;
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  color: var(--message-tool-border);
+  background-color: var(--surface-code);
+}
+
+.tool-call-diagnostics-heading:hover {
+  background-color: var(--surface-hover);
+}
+
+.tool-call-diagnostics-file {
+  @apply inline-flex items-center;
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-content: flex-end;
+}
+
+
+.tool-call-diagnostics-heading {
+  @apply flex items-center gap-2 p-2 w-full border-none cursor-pointer text-left;
+  font-family: var(--font-family-mono);
+  font-size: 13px;
+  color: var(--message-tool-border);
+  background-color: var(--surface-code);
+}
+
+.tool-call-diagnostics-heading:hover {
+  background-color: var(--surface-hover);
+}
+
+.tool-call-diagnostics-title {
+  font-size: 13px;
+}
+
+.tool-call-diagnostics-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-base);
+  font-size: 12px;
+}
+
+.tool-call-diagnostics-file {
+  @apply inline-flex items-center;
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-call-diagnostics-spacer {
+  flex: 1;
+}
+
+.tool-call-diagnostics-caret {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tool-call-diagnostics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) var(--space-md) var(--space-sm) var(--space-md);
+  background-color: var(--surface-base);
+}
+
+.tool-call-diagnostics-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: calc(4 * var(--tool-call-line-unit, 1.4em));
+  overflow-y: scroll;
+  padding-right: 0;
+  margin-right: 0;
+  scrollbar-gutter: stable both-edges;
+  scrollbar-width: thin;
+}
+
+.tool-call-diagnostic-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+}
+
+.tool-call-diagnostic-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0 var(--space-sm);
+  min-height: 20px;
+  border-radius: var(--pill-radius);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.02em;
+}
+
+.tool-call-diagnostic-error {
+  background-color: var(--status-error-bg);
+  color: var(--status-error);
+}
+
+.tool-call-diagnostic-warning {
+  background-color: var(--status-starting-bg);
+  color: var(--status-warning);
+}
+
+.tool-call-diagnostic-info {
+  background-color: var(--badge-neutral-bg);
+  color: var(--badge-neutral-text);
+}
+
+.tool-call-diagnostic-path {
+  font-family: var(--font-family-mono);
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2xs);
+}
+
+.tool-call-diagnostic-coords {
+  color: var(--text-muted);
+}
+
+.tool-call-diagnostic-message {
+  flex: 1;
+  min-width: 200px;
+  color: var(--text-primary);
+}
+
 .tool-call-section pre {
   margin: 0;
   padding: 8px;
