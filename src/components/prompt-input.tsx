@@ -16,6 +16,7 @@ interface PromptInputProps {
   instanceFolder: string
   sessionId: string
   onSend: (prompt: string, attachments: Attachment[]) => Promise<void>
+  onRunShell?: (command: string) => Promise<void>
   disabled?: boolean
   escapeInDebounce?: boolean
 }
@@ -33,6 +34,7 @@ export default function PromptInput(props: PromptInputProps) {
   const [ignoredAtPositions, setIgnoredAtPositions] = createSignal<Set<number>>(new Set<number>())
   const [pasteCount, setPasteCount] = createSignal(0)
   const [imageCount, setImageCount] = createSignal(0)
+  const [mode, setMode] = createSignal<"normal" | "shell">("normal")
   let textareaRef: HTMLTextAreaElement | undefined
   let containerRef: HTMLDivElement | undefined
 
@@ -51,6 +53,7 @@ export default function PromptInput(props: PromptInputProps) {
     clearSessionDraftPrompt(props.instanceId, props.sessionId)
     setPromptInternal("")
     setHistoryDraft(null)
+    setMode("normal")
   }
 
   function syncAttachmentCounters(currentPrompt: string, sessionAttachments: Attachment[]) {
@@ -295,9 +298,40 @@ export default function PromptInput(props: PromptInputProps) {
       return
     }
 
+    const currentText = prompt()
+    const cursorAtBufferStart = textarea.selectionStart === 0 && textarea.selectionEnd === 0
+    const isShellMode = mode() === "shell"
+
+    if (!isShellMode && e.key === "!" && cursorAtBufferStart && currentText.length === 0 && !props.disabled) {
+      e.preventDefault()
+      setMode("shell")
+      return
+    }
+
+    if (showPicker() && e.key === "Escape") {
+      e.preventDefault()
+      e.stopPropagation()
+      handlePickerClose()
+      return
+    }
+
+    if (isShellMode) {
+      if (e.key === "Escape") {
+        e.preventDefault()
+        e.stopPropagation()
+        setMode("normal")
+        return
+      }
+      if (e.key === "Backspace" && cursorAtBufferStart && currentText.length === 0) {
+        e.preventDefault()
+        setMode("normal")
+        return
+      }
+    }
+
     if (e.key === "Backspace" || e.key === "Delete") {
       const cursorPos = textarea.selectionStart
-      const text = prompt()
+      const text = currentText
 
       const pastePlaceholderRegex = /\[pasted #(\d+)\]/g
       let pasteMatch
@@ -464,9 +498,10 @@ export default function PromptInput(props: PromptInputProps) {
   async function handleSend() {
     const text = prompt().trim()
     const currentAttachments = attachments()
-    if (!text || props.disabled) return
+    if (props.disabled || !text) return
 
     const resolvedPrompt = resolvePastedPlaceholders(text, currentAttachments)
+    const isShellMode = mode() === "shell"
 
     clearPrompt()
     clearAttachments(props.instanceId, props.sessionId)
@@ -480,7 +515,15 @@ export default function PromptInput(props: PromptInputProps) {
       const updated = await getHistory(props.instanceFolder)
       setHistory(updated)
       setHistoryIndex(-1)
-      await props.onSend(text, currentAttachments)
+      if (isShellMode) {
+        if (props.onRunShell) {
+          await props.onRunShell(resolvedPrompt)
+        } else {
+          await props.onSend(resolvedPrompt, [])
+        }
+      } else {
+        await props.onSend(text, currentAttachments)
+      }
     } catch (error) {
       console.error("Failed to send message:", error)
       alert("Failed to send message: " + (error instanceof Error ? error.message : String(error)))
@@ -667,7 +710,14 @@ export default function PromptInput(props: PromptInputProps) {
     textareaRef?.focus()
   }
 
-  const canSend = () => (prompt().trim().length > 0 || attachments().length > 0) && !props.disabled
+  const canSend = () => {
+    if (props.disabled) return false
+    const hasText = prompt().trim().length > 0
+    if (mode() === "shell") return hasText
+    return hasText || attachments().length > 0
+  }
+
+  const shellHint = () => (mode() === "shell" ? { key: "Esc", text: "to exit shell mode" } : { key: "!", text: "for shell mode" })
 
   const instance = () => getActiveInstance()
 
@@ -676,7 +726,11 @@ export default function PromptInput(props: PromptInputProps) {
       <div
         ref={containerRef}
         class={`prompt-input-wrapper relative ${isDragging() ? "border-2" : ""}`}
-        style={isDragging() ? "border-color: var(--accent-primary); background-color: rgba(0, 102, 255, 0.05);" : ""}
+        style={
+          isDragging()
+            ? "border-color: var(--accent-primary); background-color: rgba(0, 102, 255, 0.05);"
+            : ""
+        }
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -768,8 +822,12 @@ export default function PromptInput(props: PromptInputProps) {
           </Show>
           <textarea
             ref={textareaRef}
-            class="prompt-input"
-            placeholder="Type your message, @file, @agent, or paste images and text..."
+            class={`prompt-input ${mode() === "shell" ? "shell-mode" : ""}`}
+            placeholder={
+              mode() === "shell"
+                ? "Run a shell command (Esc to exit)..."
+                : "Type your message, @file, @agent, or paste images and text..."
+            }
             value={prompt()}
             onInput={handleInput}
             onKeyDown={handleKeyDown}
@@ -786,22 +844,37 @@ export default function PromptInput(props: PromptInputProps) {
           />
         </div>
 
-        <button class="send-button" onClick={handleSend} disabled={!canSend()} aria-label="Send message">
-          <span class="send-icon">▶</span>
+        <button
+          class={`send-button ${mode() === "shell" ? "shell-mode" : ""}`}
+          onClick={handleSend}
+          disabled={!canSend()}
+          aria-label="Send message"
+        >
+          <Show
+            when={mode() === "shell"}
+            fallback={<span class="send-icon">▶</span>}
+          >
+            <svg class="shell-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 8l5 4-5 4" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h6" />
+            </svg>
+          </Show>
         </button>
       </div>
       <div class="prompt-input-hints">
-        <div class="flex justify-end">
+        <div class="flex justify-between w-full gap-4">
           <HintRow>
             <Show
               when={props.escapeInDebounce}
               fallback={
                 <>
-                  <Kbd>Enter</Kbd> for new line • <Kbd shortcut="cmd+enter" /> to send • <Kbd>@</Kbd> for files/agents •{" "}
-                  <Kbd>↑↓</Kbd> for history
+                  <Kbd>Enter</Kbd> for new line • <Kbd shortcut="cmd+enter" /> to send • <Kbd>@</Kbd> for files/agents • <Kbd>↑↓</Kbd> for history
                   <Show when={attachments().length > 0}>
                     <span class="ml-2 text-xs" style="color: var(--text-muted);">• {attachments().length} file(s) attached</span>
                   </Show>
+                  <span class="ml-2">
+                    • <Kbd>{shellHint().key}</Kbd> {shellHint().text}
+                  </span>
                 </>
               }
             >
@@ -810,6 +883,9 @@ export default function PromptInput(props: PromptInputProps) {
               </span>
             </Show>
           </HintRow>
+          <Show when={mode() === "shell"}>
+            <HintRow>Shell mode active</HintRow>
+          </Show>
         </div>
       </div>
     </div>

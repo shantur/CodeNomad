@@ -9,6 +9,7 @@
   @apply flex items-end gap-2 p-3;
 }
 
+
 .prompt-input {
   @apply flex-1 min-h-[96px] max-h-[200px] p-2.5 border rounded-md text-sm resize-none outline-none transition-colors;
   font-family: inherit;
@@ -18,8 +19,18 @@
   line-height: var(--line-height-normal);
 }
 
+.prompt-input.shell-mode {
+  border-color: var(--status-success);
+  box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.4);
+}
+
 .prompt-input:focus {
   border-color: var(--accent-primary);
+}
+
+.prompt-input.shell-mode:focus {
+  border-color: var(--status-success);
+  box-shadow: inset 0 0 0 1px rgba(76, 175, 80, 0.4);
 }
 
 .prompt-input:disabled {
@@ -36,6 +47,18 @@
   color: var(--text-inverted);
 }
 
+.send-button.shell-mode {
+  background-color: var(--status-success);
+}
+
+.send-button.shell-mode:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.send-button.shell-mode:active:not(:disabled) {
+  filter: brightness(0.95);
+}
+
 .send-button:hover:not(:disabled) {
   @apply opacity-90 scale-105;
 }
@@ -50,6 +73,11 @@
 
 .send-icon {
   @apply text-base;
+}
+
+.shell-icon {
+  width: 1rem;
+  height: 1rem;
 }
 
 .prompt-input-hints {

@@ -8,10 +8,7 @@ import {
   preferences,
   setAgentModelPreference,
 } from "./preferences"
-import {
-  sessions,
-  withSession,
-} from "./session-state"
+import { sessions, withSession } from "./session-state"
 import { getDefaultModel, isModelValid } from "./session-models"
 import {
   computeDisplayParts,
@@ -249,6 +246,28 @@ async function executeCustomCommand(
   })
 }
 
+async function runShellCommand(instanceId: string, sessionId: string, command: string): Promise<void> {
+  const instance = instances().get(instanceId)
+  if (!instance || !instance.client) {
+    throw new Error("Instance not ready")
+  }
+
+  const session = sessions().get(instanceId)?.get(sessionId)
+  if (!session) {
+    throw new Error("Session not found")
+  }
+
+  const agent = session.agent || "build"
+
+  await instance.client.session.shell({
+    path: { id: sessionId },
+    body: {
+      agent,
+      command,
+    },
+  })
+}
+
 async function abortSession(instanceId: string, sessionId: string): Promise<void> {
   const instance = instances().get(instanceId)
   if (!instance || !instance.client) {
@@ -326,6 +345,7 @@ async function updateSessionModel(
 export {
   abortSession,
   executeCustomCommand,
+  runShellCommand,
   sendMessage,
   updateSessionAgent,
   updateSessionModel,

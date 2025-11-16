@@ -5,7 +5,7 @@ import type { ClientPart } from "../../types/message"
 import MessageStream from "../message-stream"
 import PromptInput from "../prompt-input"
 import { instances } from "../../stores/instances"
-import { loadMessages, sendMessage, forkSession, isSessionMessagesLoading, setActiveParentSession, setActiveSession } from "../../stores/sessions"
+import { loadMessages, sendMessage, forkSession, isSessionMessagesLoading, setActiveParentSession, setActiveSession, runShellCommand } from "../../stores/sessions"
 
 interface SessionViewProps {
   sessionId: string
@@ -28,6 +28,10 @@ export const SessionView: Component<SessionViewProps> = (props) => {
 
   async function handleSendMessage(prompt: string, attachments: Attachment[]) {
     await sendMessage(props.instanceId, props.sessionId, prompt, attachments)
+  }
+
+  async function handleRunShell(command: string) {
+    await runShellCommand(props.instanceId, props.sessionId, command)
   }
 
   function getUserMessageText(messageId: string): string | null {
@@ -134,6 +138,7 @@ export const SessionView: Component<SessionViewProps> = (props) => {
             instanceFolder={props.instanceFolder}
             sessionId={s().id}
             onSend={handleSendMessage}
+            onRunShell={handleRunShell}
             escapeInDebounce={props.escapeInDebounce}
           />
         </div>
