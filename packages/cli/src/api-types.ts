@@ -23,6 +23,8 @@ export interface WorkspaceDescriptor {
   /** PID/port are populated when the workspace is running. */
   pid?: number
   port?: number
+  /** Canonical proxy path the CLI exposes for this instance. */
+  proxyPath: string
   /** Identifier of the binary resolved from config. */
   binaryId: string
   binaryLabel: string

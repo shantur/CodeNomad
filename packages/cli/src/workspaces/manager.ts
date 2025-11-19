@@ -33,6 +33,10 @@ export class WorkspaceManager {
     return this.workspaces.get(id)
   }
 
+  getInstancePort(id: string): number | undefined {
+    return this.workspaces.get(id)?.port
+  }
+
   listFiles(workspaceId: string, relativePath = "."): FileSystemEntry[] {
     const workspace = this.requireWorkspace(workspaceId)
     const browser = new FileSystemBrowser({ rootDir: workspace.path })
@@ -57,11 +61,14 @@ export class WorkspaceManager {
 
     this.options.logger.info({ workspaceId: id, folder: workspacePath, binary: binary.path }, "Creating workspace")
 
+    const proxyPath = `/workspaces/${id}/instance`
+
     const descriptor: WorkspaceRecord = {
       id,
       path: workspacePath,
       name,
       status: "starting",
+      proxyPath,
       binaryId: binary.id,
       binaryLabel: binary.label,
       binaryVersion: binary.version,

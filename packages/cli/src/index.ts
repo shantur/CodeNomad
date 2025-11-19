@@ -136,6 +136,7 @@ async function main() {
     instanceStore,
     uiStaticDir: options.uiStaticDir,
     uiDevServerUrl: options.uiDevServer,
+    logger,
   })
 
 

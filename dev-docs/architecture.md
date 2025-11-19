@@ -104,6 +104,12 @@ CodeNomad is a cross-platform desktop application built with Electron that provi
 - Event type routing
 - Reconnection logic
 
+**CLI Proxy Paths:**
+
+- The CLI server terminates all HTTP/SSE traffic and forwards it to the correct OpenCode instance.
+- Each `WorkspaceDescriptor` exposes `proxyPath` (e.g., `/workspaces/<id>/instance`), which acts as the base URL for both REST and SSE calls.
+- The renderer never touches the random per-instance port directly; it only talks to `window.location.origin + proxyPath` so a single CLI port can front every session.
+
 ## Data Flow
 
 ### Instance Creation Flow
@@ -144,6 +150,7 @@ instances: Map<instanceId, {
   folder: string
   port: number
   pid: number
+  proxyPath: string // `/workspaces/:id/instance`
   status: 'starting' | 'ready' | 'error' | 'stopped'
   client: OpenCodeClient
   eventSource: EventSource

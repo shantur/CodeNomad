@@ -1,9 +1,9 @@
 import { createSignal } from "solid-js"
-import { 
-  MessageUpdateEvent, 
-  MessageRemovedEvent, 
-  MessagePartUpdatedEvent, 
-  MessagePartRemovedEvent 
+import {
+  MessageUpdateEvent,
+  MessageRemovedEvent,
+  MessagePartUpdatedEvent,
+  MessagePartRemovedEvent,
 } from "../types/message"
 import type {
   EventLspUpdated,
@@ -14,10 +14,11 @@ import type {
   EventSessionIdle,
   EventSessionUpdated,
 } from "@opencode-ai/sdk"
+import { CODENOMAD_API_BASE } from "./api-client"
 
 interface SSEConnection {
   instanceId: string
-  port: number
+  proxyPath: string
   eventSource: EventSource
   status: "connecting" | "connected" | "disconnected" | "error"
   reconnectAttempts: number
@@ -57,19 +58,19 @@ class SSEManager {
   private connections = new Map<string, SSEConnection>()
   private static readonly MAX_RECONNECT_ATTEMPTS = 3
 
-  connect(instanceId: string, port: number, reconnectAttempts = 0): void {
+  connect(instanceId: string, proxyPath: string, reconnectAttempts = 0): void {
     const existing = this.connections.get(instanceId)
     if (existing) {
       this.clearReconnectTimer(existing)
       existing.eventSource.close()
     }
 
-    const url = `http://localhost:${port}/event`
+    const url = buildInstanceEventsUrl(proxyPath)
     const eventSource = new EventSource(url)
 
     const connection: SSEConnection = {
       instanceId,
-      port,
+      proxyPath,
       eventSource,
       status: "connecting",
       reconnectAttempts,
@@ -180,7 +181,7 @@ class SSEManager {
 
     connection.reconnectTimer = setTimeout(() => {
       connection.reconnectTimer = undefined
-      this.connect(instanceId, connection.port, nextAttempt)
+      this.connect(instanceId, connection.proxyPath, nextAttempt)
     }, delay)
   }
 
@@ -232,6 +233,21 @@ class SSEManager {
   getStatuses() {
     return connectionStatus()
   }
+}
+
+function buildInstanceEventsUrl(proxyPath: string): string {
+  const normalized = normalizeProxyPath(proxyPath)
+  const base = stripTrailingSlashes(CODENOMAD_API_BASE)
+  return `${base}${normalized}/event`
+}
+
+function normalizeProxyPath(proxyPath: string): string {
+  const withLeading = proxyPath.startsWith("/") ? proxyPath : `/${proxyPath}`
+  return withLeading.replace(/\/+/g, "/").replace(/\/+$/, "")
+}
+
+function stripTrailingSlashes(input: string): string {
+  return input.replace(/\/+$/, "")
 }
 
 export const sseManager = new SSEManager()

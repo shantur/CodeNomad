@@ -33,6 +33,7 @@ export interface Instance {
   folder: string
   port: number
   pid: number
+  proxyPath: string
   status: "starting" | "ready" | "error" | "stopped"
   error?: string
   client: OpencodeClient | null

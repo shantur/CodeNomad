@@ -14,3 +14,7 @@
 - Enforce single responsibility; split large files when concerns diverge (state, actions, API, events, etc.).
 - Prefer composable primitives (signals, hooks, utilities) over deep inheritance or implicit global state.
 - When adding platform integrations (SSE, IPC, SDK), isolate them in thin adapters that surface typed events/actions.
+
+## Tooling Preferences
+- Use the `edit` tool for modifying existing files; prefer it over other editing methods.
+- Use the `write` tool only when creating new files from scratch.

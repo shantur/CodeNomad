@@ -19,6 +19,7 @@
     "typecheck": "npm run typecheck --workspace @codenomad/ui && npm run typecheck --workspace @codenomad/electron-app"
   },
   "dependencies": {
-    "7zip-bin": "^5.2.0"
+    "7zip-bin": "^5.2.0",
+    "google-auth-library": "^10.5.0"
   }
 }

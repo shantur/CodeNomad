@@ -3,8 +3,12 @@ import cors from "@fastify/cors"
 import fastifyStatic from "@fastify/static"
 import fs from "fs"
 import path from "path"
+import { Readable } from "node:stream"
+import type { ReadableStream as NodeReadableStream } from "node:stream/web"
 import { fetch } from "undici"
+import type { Logger } from "../logger"
 import { WorkspaceManager } from "../workspaces/manager"
+
 import { ConfigStore } from "../config/store"
 import { BinaryRegistry } from "../config/binaries"
 import { FileSystemBrowser } from "../filesystem/browser"
@@ -30,11 +34,13 @@ interface HttpServerDeps {
   instanceStore: InstanceStore
   uiStaticDir: string
   uiDevServerUrl?: string
+  logger: Logger
 }
 
 
 export function createHttpServer(deps: HttpServerDeps) {
   const app = Fastify({ logger: false })
+  const proxyLogger = deps.logger.child({ component: "proxy" })
 
   const sseClients = new Set<() => void>()
   const registerSseClient = (cleanup: () => void) => {
@@ -59,6 +65,7 @@ export function createHttpServer(deps: HttpServerDeps) {
   registerMetaRoutes(app, { serverMeta: deps.serverMeta })
   registerEventRoutes(app, { eventBus: deps.eventBus, registerClient: registerSseClient })
   registerStorageRoutes(app, { instanceStore: deps.instanceStore })
+  registerInstanceProxyRoutes(app, { workspaceManager: deps.workspaceManager, logger: proxyLogger })
 
   if (deps.uiDevServerUrl) {
     setupDevProxy(app, deps.uiDevServerUrl)
@@ -74,6 +81,152 @@ export function createHttpServer(deps: HttpServerDeps) {
       return app.close()
     },
   }
+}
+
+interface InstanceProxyDeps {
+  workspaceManager: WorkspaceManager
+  logger: Logger
+}
+
+function registerInstanceProxyRoutes(app: FastifyInstance, deps: InstanceProxyDeps) {
+  app.register(async (instance) => {
+    instance.removeAllContentTypeParsers()
+    instance.addContentTypeParser("*", { parseAs: "buffer" }, (req, body, done) => done(null, body))
+
+    const proxyBaseHandler = async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+      await proxyWorkspaceRequest({
+        request,
+        reply,
+        workspaceManager: deps.workspaceManager,
+        pathSuffix: "",
+        logger: deps.logger,
+      })
+    }
+
+    const proxyWildcardHandler = async (
+      request: FastifyRequest<{ Params: { id: string; "*": string } }>,
+      reply: FastifyReply,
+    ) => {
+      await proxyWorkspaceRequest({
+        request,
+        reply,
+        workspaceManager: deps.workspaceManager,
+        pathSuffix: request.params["*"] ?? "",
+        logger: deps.logger,
+      })
+    }
+
+    instance.all("/workspaces/:id/instance", proxyBaseHandler)
+    instance.all("/workspaces/:id/instance/*", proxyWildcardHandler)
+  })
+}
+
+const INSTANCE_PROXY_HOST = "127.0.0.1"
+const METHODS_WITHOUT_BODY = new Set(["GET", "HEAD", "OPTIONS"])
+
+async function proxyWorkspaceRequest(args: {
+  request: FastifyRequest
+  reply: FastifyReply
+  workspaceManager: WorkspaceManager
+  logger: Logger
+  pathSuffix?: string
+}) {
+  const { request, reply, workspaceManager, logger } = args
+  const workspaceId = (request.params as { id: string }).id
+  const workspace = workspaceManager.get(workspaceId)
+
+  if (!workspace) {
+    reply.code(404).send({ error: "Workspace not found" })
+    return
+  }
+
+  const port = workspaceManager.getInstancePort(workspaceId)
+  if (!port) {
+    reply.code(502).send({ error: "Workspace instance is not ready" })
+    return
+  }
+
+  const normalizedSuffix = normalizeInstanceSuffix(args.pathSuffix)
+  const queryIndex = (request.raw.url ?? "").indexOf("?")
+  const search = queryIndex >= 0 ? (request.raw.url ?? "").slice(queryIndex) : ""
+  const targetUrl = `http://${INSTANCE_PROXY_HOST}:${port}${normalizedSuffix}${search}`
+
+  try {
+    const abortController = new AbortController()
+    const bodyPayload = METHODS_WITHOUT_BODY.has(request.method.toUpperCase())
+      ? undefined
+      : (request.body as Buffer | undefined)
+    const headers = buildProxyHeaders(request.headers)
+    if (bodyPayload && bodyPayload.byteLength > 0) {
+      headers["content-length"] = String(bodyPayload.byteLength)
+    } else {
+      delete headers["content-length"]
+    }
+    const response = await fetch(targetUrl, {
+      method: request.method,
+      headers,
+      body: bodyPayload,
+      signal: abortController.signal,
+    })
+
+    const headersToForward: Record<string, string> = {}
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() === "content-length") {
+        return
+      }
+      headersToForward[key] = value
+    })
+
+    const contentType = (response.headers.get("content-type") ?? "").toLowerCase()
+    const isEventStream = contentType.includes("text/event-stream")
+
+    if (isEventStream && response.body) {
+      reply.hijack()
+      Object.entries(headersToForward).forEach(([key, value]) => reply.raw.setHeader(key, value))
+      reply.raw.setHeader("Cache-Control", "no-cache")
+      reply.raw.setHeader("Connection", "keep-alive")
+      reply.raw.setHeader("Content-Type", "text/event-stream")
+      reply.raw.writeHead(response.status)
+      const stream = Readable.fromWeb(response.body as NodeReadableStream)
+      const cleanup = () => {
+        stream.destroy()
+        abortController.abort()
+      }
+      request.raw.on("close", cleanup)
+      request.raw.on("error", cleanup)
+      stream.on("error", cleanup)
+      stream.pipe(reply.raw)
+      return
+    }
+
+    Object.entries(headersToForward).forEach(([key, value]) => reply.header(key, value))
+
+    reply.code(response.status)
+
+    if (request.method === "HEAD") {
+      reply.send()
+      abortController.abort()
+      return
+    }
+
+    const bodyBuffer = Buffer.from(await response.arrayBuffer())
+    reply.header("content-length", String(bodyBuffer.byteLength))
+    reply.send(bodyBuffer)
+    abortController.abort()
+  } catch (error) {
+    logger.error({ err: error, workspaceId, targetUrl }, "Failed to proxy workspace request")
+    if (!reply.sent) {
+      reply.code(502).send({ error: "Workspace instance proxy failed" })
+    }
+  }
+}
+
+function normalizeInstanceSuffix(pathSuffix: string | undefined) {
+  if (!pathSuffix || pathSuffix === "/") {
+    return "/"
+  }
+  const trimmed = pathSuffix.replace(/^\/+/, "")
+  return trimmed.length === 0 ? "/" : `/${trimmed}`
 }
 
 function setupStaticUi(app: FastifyInstance, uiDir: string) {

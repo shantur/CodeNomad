@@ -25,6 +25,8 @@ const DEFAULT_EVENTS_PATH = typeof window !== "undefined" ? window.__CODENOMAD_E
 const API_BASE = import.meta.env.VITE_CODENOMAD_API_BASE ?? DEFAULT_BASE
 const EVENTS_URL = buildEventsUrl(API_BASE, DEFAULT_EVENTS_PATH)
 
+export const CODENOMAD_API_BASE = API_BASE
+
 function buildEventsUrl(base: string | undefined, path: string): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path

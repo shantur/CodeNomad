@@ -45,6 +45,7 @@ function workspaceDescriptorToInstance(descriptor: WorkspaceDescriptor): Instanc
     folder: descriptor.path,
     port: descriptor.port ?? existing?.port ?? 0,
     pid: descriptor.pid ?? existing?.pid ?? 0,
+    proxyPath: descriptor.proxyPath,
     status: descriptor.status,
     error: descriptor.error,
     client: existing?.client ?? null,
@@ -63,32 +64,39 @@ function upsertWorkspace(descriptor: WorkspaceDescriptor) {
     setHasInstances(true)
   }
 
-  if (descriptor.status === "ready" && descriptor.port) {
-    attachClient(descriptor.id, descriptor.port)
+  if (descriptor.status === "ready") {
+    attachClient(descriptor)
   }
 }
 
-function attachClient(instanceId: string, port: number) {
-  const instance = instances().get(instanceId)
+function attachClient(descriptor: WorkspaceDescriptor) {
+  const instance = instances().get(descriptor.id)
   if (!instance) return
 
-  if (instance.port === port && instance.client) {
+  const nextPort = descriptor.port ?? instance.port
+  const nextProxyPath = descriptor.proxyPath
+
+  if (instance.client && instance.proxyPath === nextProxyPath) {
+    if (nextPort && instance.port !== nextPort) {
+      updateInstance(descriptor.id, { port: nextPort })
+    }
     return
   }
 
-  if (instance.port && instance.client) {
-    sdkManager.destroyClient(instance.port)
-    sseManager.disconnect(instanceId)
+  if (instance.client) {
+    sdkManager.destroyClient(descriptor.id)
+    sseManager.disconnect(descriptor.id)
   }
 
-  const client = sdkManager.createClient(port)
-  updateInstance(instanceId, {
+  const client = sdkManager.createClient(descriptor.id, nextProxyPath)
+  updateInstance(descriptor.id, {
     client,
-    port,
+    port: nextPort ?? 0,
+    proxyPath: nextProxyPath,
     status: "ready",
   })
-  sseManager.connect(instanceId, port)
-  void hydrateInstanceData(instanceId).catch((error) => {
+  sseManager.connect(descriptor.id, nextProxyPath)
+  void hydrateInstanceData(descriptor.id).catch((error) => {
     console.error("Failed to hydrate instance data", error)
   })
 }
@@ -97,8 +105,8 @@ function releaseInstanceResources(instanceId: string) {
   const instance = instances().get(instanceId)
   if (!instance) return
 
-  if (instance.port) {
-    sdkManager.destroyClient(instance.port)
+  if (instance.client) {
+    sdkManager.destroyClient(instanceId)
   }
   sseManager.disconnect(instanceId)
 }
