@@ -10,6 +10,7 @@ import Kbd from "./kbd"
 import HintRow from "./hint-row"
 import { getActiveInstance } from "../stores/instances"
 import { agents, getSessionDraftPrompt, setSessionDraftPrompt, clearSessionDraftPrompt } from "../stores/sessions"
+import { showAlertDialog } from "../stores/alerts"
 
 interface PromptInputProps {
   instanceId: string
@@ -526,7 +527,11 @@ export default function PromptInput(props: PromptInputProps) {
       }
     } catch (error) {
       console.error("Failed to send message:", error)
-      alert("Failed to send message: " + (error instanceof Error ? error.message : String(error)))
+      showAlertDialog("Failed to send message", {
+        title: "Send failed",
+        detail: error instanceof Error ? error.message : String(error),
+        variant: "error",
+      })
     } finally {
       textareaRef?.focus()
     }

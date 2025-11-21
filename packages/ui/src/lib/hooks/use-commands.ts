@@ -11,6 +11,7 @@ import {
   setActiveSession,
 } from "../../stores/sessions"
 import { setSessionCompactionState } from "../../stores/session-compaction"
+import { showAlertDialog } from "../../stores/alerts"
 import type { Instance } from "../../types/instance"
 
 export interface UseCommandsOptions {
@@ -207,7 +208,10 @@ export function useCommands(options: UseCommandsOptions) {
           setSessionCompactionState(instance.id, sessionId, false)
           console.error("Failed to compact session:", error)
           const message = error instanceof Error ? error.message : "Failed to compact session"
-          alert(`Compact failed: ${message}`)
+          showAlertDialog(`Compact failed: ${message}`, {
+            title: "Compact failed",
+            variant: "error",
+          })
         }
       },
     })
@@ -256,7 +260,10 @@ export function useCommands(options: UseCommandsOptions) {
         }
 
         if (!messageID) {
-          alert("Nothing to undo")
+          showAlertDialog("Nothing to undo", {
+            title: "No actions to undo",
+            variant: "info",
+          })
           return
         }
 
@@ -282,7 +289,10 @@ export function useCommands(options: UseCommandsOptions) {
           }
         } catch (error) {
           console.error("Failed to revert message:", error)
-          alert("Failed to revert message")
+          showAlertDialog("Failed to revert message", {
+            title: "Undo failed",
+            variant: "error",
+          })
         }
       },
     })

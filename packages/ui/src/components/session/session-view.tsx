@@ -6,6 +6,7 @@ import MessageStream from "../message-stream"
 import PromptInput from "../prompt-input"
 import { instances } from "../../stores/instances"
 import { loadMessages, sendMessage, forkSession, isSessionMessagesLoading, setActiveParentSession, setActiveSession, runShellCommand } from "../../stores/sessions"
+import { showAlertDialog } from "../../stores/alerts"
 
 interface SessionViewProps {
   sessionId: string
@@ -73,7 +74,10 @@ export const SessionView: Component<SessionViewProps> = (props) => {
       }
     } catch (error) {
       console.error("Failed to revert:", error)
-      alert("Failed to revert to message")
+      showAlertDialog("Failed to revert to message", {
+        title: "Revert failed",
+        variant: "error",
+      })
     }
   }
 
@@ -106,7 +110,10 @@ export const SessionView: Component<SessionViewProps> = (props) => {
       }
     } catch (error) {
       console.error("Failed to fork session:", error)
-      alert("Failed to fork session")
+      showAlertDialog("Failed to fork session", {
+        title: "Fork failed",
+        variant: "error",
+      })
     }
   }
 

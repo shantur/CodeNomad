@@ -1,7 +1,9 @@
 import { Component, Show, createMemo, createEffect, createSignal } from "solid-js"
 import { Dialog } from "@kobalte/core/dialog"
 import { Toaster } from "solid-toast"
+import AlertDialog from "./components/alert-dialog"
 import FolderSelectionView from "./components/folder-selection-view"
+import { showConfirmDialog } from "./stores/alerts"
 import InstanceTabs from "./components/instance-tabs"
 import InstanceDisconnectedModal from "./components/instance-disconnected-modal"
 import InstanceShell from "./components/instance/instance-shell"
@@ -135,11 +137,21 @@ const App: Component = () => {
   }
 
   async function handleCloseInstance(instanceId: string) {
-    if (confirm("Stop OpenCode instance? This will stop the server.")) {
-      await stopInstance(instanceId)
-      if (instances().size === 0) {
-        setHasInstances(false)
-      }
+    const confirmed = await showConfirmDialog(
+      "Stop OpenCode instance? This will stop the server.",
+      {
+        title: "Stop instance",
+        variant: "warning",
+        confirmLabel: "Stop",
+        cancelLabel: "Keep running",
+      },
+    )
+
+    if (!confirmed) return
+
+    await stopInstance(instanceId)
+    if (instances().size === 0) {
+      setHasInstances(false)
     }
   }
 
@@ -320,6 +332,8 @@ const App: Component = () => {
             </div>
           </div>
         </Show>
+
+        <AlertDialog />
 
         <Toaster
           position="top-right"

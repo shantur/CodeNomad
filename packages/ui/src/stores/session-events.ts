@@ -16,6 +16,7 @@ import type {
 import { showToastNotification, ToastVariant } from "../lib/notifications"
 import { preferences } from "./preferences"
 import { instances, addPermissionToQueue, removePermissionFromQueue, refreshPermissionsForSession } from "./instances"
+import { showAlertDialog } from "./alerts"
 import {
   sessions,
   setSessions,
@@ -441,7 +442,10 @@ function handleSessionError(_instanceId: string, event: EventSessionError): void
     }
   }
 
-  alert(`Error: ${message}`)
+  showAlertDialog(`Error: ${message}`, {
+    title: "Session error",
+    variant: "error",
+  })
 }
 
 function handleMessageRemoved(instanceId: string, event: MessageRemovedEvent): void {

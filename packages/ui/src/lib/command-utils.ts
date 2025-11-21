@@ -1,5 +1,6 @@
 import type { Command } from "./commands"
 import type { Command as SDKCommand } from "@opencode-ai/sdk"
+import { showAlertDialog } from "../stores/alerts"
 import { activeSessionId, executeCustomCommand } from "../stores/sessions"
 
 export function commandRequiresArguments(template?: string): boolean {
@@ -33,7 +34,10 @@ export function buildCustomCommandEntries(instanceId: string, commands: SDKComma
     action: async () => {
       const sessionId = activeSessionId().get(instanceId)
       if (!sessionId || sessionId === "info") {
-        alert("Select a session before running a custom command.")
+        showAlertDialog("Select a session before running a custom command.", {
+          title: "Session required",
+          variant: "warning",
+        })
         return
       }
       const args = promptForCommandArguments(cmd)
@@ -44,7 +48,10 @@ export function buildCustomCommandEntries(instanceId: string, commands: SDKComma
         await executeCustomCommand(instanceId, sessionId, cmd.name, args)
       } catch (error) {
         console.error("Failed to run custom command:", error)
-        alert("Failed to run custom command. Check the console for details.")
+        showAlertDialog("Failed to run custom command. Check the console for details.", {
+          title: "Command failed",
+          variant: "error",
+        })
       }
     },
   }))
