@@ -16,8 +16,8 @@ const workspaceNodeModulesPath = join(workspaceRoot, "node_modules")
 
 const platforms = {
   mac: {
-    args: ["--mac", "--x64", "--arm64", "--universal"],
-    description: "macOS (Intel, Apple Silicon, Universal)",
+    args: ["--mac", "--x64", "--arm64"],
+    description: "macOS (Intel & Apple Silicon)",
   },
   "mac-x64": {
     args: ["--mac", "--x64"],

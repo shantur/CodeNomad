@@ -73,11 +73,11 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64", "universal"]
+          "arch": ["x64", "arm64"]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64", "universal"]
+          "arch": ["x64", "arm64"]
         }
       ],
       "artifactName": "CodeNomadApp-${version}-${os}-${arch}.${ext}",
