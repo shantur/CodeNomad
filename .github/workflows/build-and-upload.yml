@@ -55,16 +55,10 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/electron-app/release/*; do
+          for file in packages/electron-app/release/*.zip; do
             [ -f "$file" ] || continue
-            case "$file" in
-              *.dmg|*.zip)
-                gh release upload "$TAG" "$file" --clobber
-                ;;
-              *)
-                echo "Skipping non-installer asset: $file"
-                ;;
-            esac
+            echo "Uploading $file"
+            gh release upload "$TAG" "$file" --clobber
           done
 
   build-windows:
@@ -99,9 +93,8 @@ jobs:
       - name: Upload release assets
         shell: pwsh
         run: |
-          Get-ChildItem -Path "packages/electron-app/release" -File | Where-Object {
-            $_.Name -match '\\.(exe|zip)$'
-          } | ForEach-Object {
+          Get-ChildItem -Path "packages/electron-app/release" -Filter *.zip -File | ForEach-Object {
+            Write-Host "Uploading $($_.FullName)"
             gh release upload $env:TAG $_.FullName --clobber
           }
 
@@ -137,16 +130,10 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/electron-app/release/*; do
+          for file in packages/electron-app/release/*.zip; do
             [ -f "$file" ] || continue
-            case "$file" in
-              *.AppImage|*.deb|*.tar.gz)
-                gh release upload "$TAG" "$file" --clobber
-                ;;
-              *)
-                echo "Skipping non-installer asset: $file"
-                ;;
-            esac
+            echo "Uploading $file"
+            gh release upload "$TAG" "$file" --clobber
           done
 
   build-tauri-macos:
@@ -190,16 +177,14 @@ jobs:
           if [ -d "$BUNDLE_ROOT/macos/CodeNomad.app" ]; then
             ditto -ck --sequesterRsrc --keepParent "$BUNDLE_ROOT/macos/CodeNomad.app" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-macos-x64.zip"
           fi
-          if [ -f "$BUNDLE_ROOT/dmg/CodeNomad.dmg" ]; then
-            cp "$BUNDLE_ROOT/dmg/CodeNomad.dmg" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-macos-x64.dmg"
-          fi
 
       - name: Upload Tauri release assets (macOS)
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/tauri-app/release-tauri/*; do
+          for file in packages/tauri-app/release-tauri/*.zip; do
             [ -f "$file" ] || continue
+            echo "Uploading $file"
             gh release upload "$TAG" "$file" --clobber
           done
 
@@ -244,16 +229,14 @@ jobs:
           if [ -d "$BUNDLE_ROOT/macos/CodeNomad.app" ]; then
             ditto -ck --sequesterRsrc --keepParent "$BUNDLE_ROOT/macos/CodeNomad.app" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-macos-arm64.zip"
           fi
-          if [ -f "$BUNDLE_ROOT/dmg/CodeNomad.dmg" ]; then
-            cp "$BUNDLE_ROOT/dmg/CodeNomad.dmg" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-macos-arm64.dmg"
-          fi
 
       - name: Upload Tauri release assets (macOS arm64)
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/tauri-app/release-tauri/*; do
+          for file in packages/tauri-app/release-tauri/*.zip; do
             [ -f "$file" ] || continue
+            echo "Uploading $file"
             gh release upload "$TAG" "$file" --clobber
           done
 
@@ -296,17 +279,18 @@ jobs:
           $artifactDir = "packages/tauri-app/release-tauri"
           if (Test-Path $artifactDir) { Remove-Item $artifactDir -Recurse -Force }
           New-Item -ItemType Directory -Path $artifactDir | Out-Null
-          Get-ChildItem -Path $bundleRoot -Recurse -File | Where-Object { $_.Extension -in '.exe', '.msi' } | ForEach-Object {
-            $ext = $_.Extension.TrimStart('.')
-            $dest = Join-Path $artifactDir ("CodeNomad-Tauri-$env:VERSION-windows-x64.$ext")
-            Copy-Item $_.FullName $dest -Force
+          $artifact = Get-ChildItem -Path $bundleRoot -Recurse -File | Where-Object { $_.Extension -in '.exe', '.msi' } | Select-Object -First 1
+          if ($null -ne $artifact) {
+            $dest = Join-Path $artifactDir ("CodeNomad-Tauri-$env:VERSION-windows-x64.zip")
+            Compress-Archive -Path $artifact.FullName -DestinationPath $dest -Force
           }
 
       - name: Upload Tauri release assets (Windows)
         shell: pwsh
         run: |
           if (Test-Path "packages/tauri-app/release-tauri") {
-            Get-ChildItem -Path "packages/tauri-app/release-tauri" -File | ForEach-Object {
+            Get-ChildItem -Path "packages/tauri-app/release-tauri" -Filter *.zip -File | ForEach-Object {
+              Write-Host "Uploading $($_.FullName)"
               gh release upload $env:TAG $_.FullName --clobber
             }
           }
@@ -363,23 +347,23 @@ jobs:
           rm -rf "$ARTIFACT_DIR"
           mkdir -p "$ARTIFACT_DIR"
           shopt -s nullglob globstar
-          for file in "$BUNDLE_ROOT"/**/*.{AppImage,deb,rpm,tar.gz}; do
-            [ -f "$file" ] || continue
-            ext="${file##*.}"
-            cp "$file" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-linux-x64.${ext}"
-          done
+          first_artifact=$(find "$BUNDLE_ROOT" -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) | head -n1)
+          if [ -n "$first_artifact" ]; then
+            zip -j "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-linux-x64.zip" "$first_artifact"
+          fi
 
       - name: Upload Tauri release assets (Linux)
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/tauri-app/release-tauri/*; do
+          for file in packages/tauri-app/release-tauri/*.zip; do
             [ -f "$file" ] || continue
+            echo "Uploading $file"
             gh release upload "$TAG" "$file" --clobber
           done
 
   build-tauri-linux-arm64:
-    runs-on: ubuntu-24.04-arm64
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       VERSION: ${{ inputs.version }}
@@ -387,6 +371,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/arm64
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -396,19 +385,24 @@ jobs:
 
       - name: Setup Rust (Tauri)
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
 
       - name: Install Linux build dependencies (Tauri)
         run: |
+          sudo dpkg --add-architecture arm64
           sudo apt-get update
           sudo apt-get install -y \
             build-essential \
             pkg-config \
-            libgtk-3-dev \
-            libglib2.0-dev \
-            libwebkit2gtk-4.1-dev \
-            libsoup-3.0-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev
+            gcc-aarch64-linux-gnu \
+            g++-aarch64-linux-gnu \
+            libgtk-3-dev:arm64 \
+            libglib2.0-dev:arm64 \
+            libwebkit2gtk-4.1-dev:arm64 \
+            libsoup-3.0-dev:arm64 \
+            libayatana-appindicator3-dev:arm64 \
+            librsvg2-dev:arm64
 
       - name: Set workspace versions
         run: npm version ${VERSION} --workspaces --include-workspace-root --no-git-tag-version --allow-same-version
@@ -420,6 +414,12 @@ jobs:
         run: npm install @rollup/rollup-linux-arm64-gnu --no-save
 
       - name: Build Linux bundle (Tauri arm64)
+        env:
+          TAURI_BUILD_TARGET: aarch64-unknown-linux-gnu
+          PKG_CONFIG_PATH: /usr/lib/aarch64-linux-gnu/pkgconfig
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
         run: npm run build --workspace @codenomad/tauri-app
 
       - name: Package Tauri artifacts (Linux arm64)
@@ -430,20 +430,21 @@ jobs:
           rm -rf "$ARTIFACT_DIR"
           mkdir -p "$ARTIFACT_DIR"
           shopt -s nullglob globstar
-          for file in "$BUNDLE_ROOT"/**/*.{AppImage,deb,rpm,tar.gz}; do
-            [ -f "$file" ] || continue
-            ext="${file##*.}"
-            cp "$file" "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-linux-arm64.${ext}"
-          done
+          first_artifact=$(find "$BUNDLE_ROOT" -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.tar.gz" \) | head -n1)
+          if [ -n "$first_artifact" ]; then
+            zip -j "$ARTIFACT_DIR/CodeNomad-Tauri-${VERSION}-linux-arm64.zip" "$first_artifact"
+          fi
 
       - name: Upload Tauri release assets (Linux arm64)
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for file in packages/tauri-app/release-tauri/*; do
+          for file in packages/tauri-app/release-tauri/*.zip; do
             [ -f "$file" ] || continue
+            echo "Uploading $file"
             gh release upload "$TAG" "$file" --clobber
           done
+
 
   build-linux-rpm:
     runs-on: ubuntu-24.04
@@ -481,8 +482,10 @@ jobs:
 
       - name: Upload RPM release assets
         run: |
+          set -euo pipefail
           shopt -s nullglob
           for file in packages/electron-app/release/*.rpm; do
             [ -f "$file" ] || continue
+            echo "Uploading $file"
             gh release upload "$TAG" "$file" --clobber
           done

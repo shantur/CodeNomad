@@ -56,7 +56,7 @@ jobs:
     secrets: inherit
 
   publish-server:
-    needs: build-and-upload
+    needs: prepare-dev
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -76,7 +76,7 @@
           "arch": ["x64", "arm64"]
         }
       ],
-      "artifactName": "CodeNomadApp-${version}-${os}-${arch}.${ext}",
+      "artifactName": "CodeNomad-${version}-${os}-${arch}.${ext}",
       "icon": "electron/resources/icon.icns"
     },
     "dmg": {
@@ -88,15 +88,11 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
-          "arch": ["x64", "arm64"]
-        },
-        {
           "target": "zip",
           "arch": ["x64", "arm64"]
         }
       ],
-      "artifactName": "CodeNomadApp-${version}-${os}-${arch}.${ext}",
+      "artifactName": "CodeNomad-${version}-${os}-${arch}.${ext}",
       "icon": "electron/resources/icon.ico"
     },
     "nsis": {
@@ -108,23 +104,11 @@
     "linux": {
       "target": [
         {
-          "target": "AppImage",
-          "arch": ["x64", "arm64"]
-        },
-        {
-          "target": "deb",
-          "arch": ["x64", "arm64"]
-        },
-        {
-          "target": "rpm",
-          "arch": ["x64", "arm64"]
-        },
-        {
-          "target": "tar.gz",
+          "target": "zip",
           "arch": ["x64", "arm64"]
         }
       ],
-      "artifactName": "CodeNomadApp-${version}-${os}-${arch}.${ext}",
+      "artifactName": "CodeNomad-${version}-${os}-${arch}.${ext}",
       "category": "Development",
       "icon": "electron/resources/icon.png"
     }

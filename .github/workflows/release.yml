@@ -73,7 +73,7 @@ jobs:
     secrets: inherit
 
   publish-server:
-    needs: build-and-upload
+    needs: prepare-release
     runs-on: ubuntu-latest
     permissions:
       contents: read
