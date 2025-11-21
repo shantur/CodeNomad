@@ -17,6 +17,7 @@ on:
         type: string
 
 permissions:
+  id-token: write
   contents: write
 
 env:
@@ -366,6 +367,7 @@ jobs:
           done
 
   build-tauri-linux-arm64:
+    if: ${{ false }}
     runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
