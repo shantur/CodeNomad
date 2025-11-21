@@ -45,6 +45,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces
 
+      - name: Ensure rollup native binary
+        run: npm install @rollup/rollup-darwin-x64 --no-save
+
       - name: Build macOS binaries
         run: npm run build:mac --workspace @neuralnomads/codenomad-electron-app
 
@@ -86,6 +89,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --workspaces
 
+      - name: Ensure rollup native binary
+        run: npm install @rollup/rollup-win32-x64-msvc --no-save
+
       - name: Build Windows binaries
         run: npm run build:win --workspace @neuralnomads/codenomad-electron-app
 
@@ -119,6 +125,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --workspaces
+
+      - name: Ensure rollup native binary
+        run: npm install @rollup/rollup-linux-x64-gnu --no-save
 
       - name: Build Linux binaries
         run: npm run build:linux --workspace @neuralnomads/codenomad-electron-app
@@ -165,6 +174,9 @@ jobs:
 
       - name: Install project dependencies
         run: npm ci --workspaces
+
+      - name: Ensure rollup native binary
+        run: npm install @rollup/rollup-linux-x64-gnu --no-save
 
       - name: Build Linux RPM binaries
         run: npm run build:linux-rpm --workspace @neuralnomads/codenomad-electron-app
