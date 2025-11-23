@@ -34,7 +34,7 @@ const DEFAULT_SESSION_SIDEBAR_WIDTH = 350
 const InstanceShell: Component<InstanceShellProps> = (props) => {
   const [sessionSidebarWidth, setSessionSidebarWidth] = createSignal(DEFAULT_SESSION_SIDEBAR_WIDTH)
 
-  const activeSessions = createMemo(() => {
+  const allSessionsMap = createMemo(() => {
     const allSessions = getSessions(props.instance.id)
     return new Map(allSessions.map((s) => [s.id, s]))
   })
@@ -46,7 +46,7 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
   const activeSessionForInstance = createMemo(() => {
     const sessionId = activeSessionIdForInstance()
     if (!sessionId || sessionId === "info") return null
-    return activeSessions().get(sessionId) ?? null
+    return allSessionsMap().get(sessionId) ?? null
   })
 
   const customCommands = createMemo(() => buildCustomCommandEntries(props.instance.id, getInstanceCommands(props.instance.id)))
@@ -65,12 +65,12 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
 
   return (
     <>
-      <Show when={activeSessions().size > 0} fallback={<InstanceWelcomeView instance={props.instance} />}>
+      <Show when={activeSessionIdForInstance() !== null} fallback={<InstanceWelcomeView instance={props.instance} />}>
         <div class="flex flex-1 min-h-0">
           <div class="session-sidebar flex flex-col bg-surface-secondary" style={{ width: `${sessionSidebarWidth()}px` }}>
             <SessionList
               instanceId={props.instance.id}
-              sessions={activeSessions()}
+              sessions={allSessionsMap()}
               activeSessionId={activeSessionIdForInstance()}
               onSelect={handleSessionSelect}
               onClose={(id) => {
@@ -154,7 +154,7 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
                   {(sessionId) => (
                     <SessionView
                       sessionId={sessionId}
-                      activeSessions={activeSessions()}
+                      allSessionsMap={allSessionsMap()}
                       instanceId={props.instance.id}
                       instanceFolder={props.instance.folder}
                       escapeInDebounce={props.escapeInDebounce}

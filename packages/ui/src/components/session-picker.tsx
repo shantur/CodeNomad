@@ -1,9 +1,10 @@
 import { Component, createSignal, Show, For, createEffect, createMemo } from "solid-js"
 import { Dialog } from "@kobalte/core/dialog"
-import type { Session, Agent } from "../types/session"
-import { getParentSessions, getChildSessions, getSessions, createSession, setActiveParentSession } from "../stores/sessions"
+import type { Session } from "../types/session"
+import { getSessions, createSession, setActiveParentSession } from "../stores/sessions"
 import { instances, stopInstance } from "../stores/instances"
 import { agents } from "../stores/sessions"
+import { groupSessionsByParent } from "../lib/session-utils"
 
 interface SessionPickerProps {
   instanceId: string
@@ -17,36 +18,9 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
 
   const instance = () => instances().get(props.instanceId)
   const allSessions = () => getSessions(props.instanceId)
-  const parentSessions = () => getParentSessions(props.instanceId)
   const agentList = () => agents().get(props.instanceId) || []
 
-  const sessionsByParent = createMemo(() => {
-    const sessions = allSessions()
-    const grouped = new Map<string, { parent: Session; children: Session[] }>()
-    
-    for (const session of sessions) {
-      if (session.parentId === null) {
-        grouped.set(session.id, { parent: session, children: [] })
-      }
-    }
-    
-    for (const session of sessions) {
-      if (session.parentId !== null) {
-        const group = grouped.get(session.parentId)
-        if (group) {
-          group.children.push(session)
-        }
-      }
-    }
-    
-    for (const [_, group] of grouped) {
-      group.children.sort((a, b) => (b.time.updated || 0) - (a.time.updated || 0))
-    }
-    
-    return Array.from(grouped.values()).sort((a, b) => 
-      (b.parent.time.updated || 0) - (a.parent.time.updated || 0)
-    )
-  })
+  const sessionsByParent = createMemo(() => groupSessionsByParent(allSessions()))
 
   createEffect(() => {
     const list = agentList()

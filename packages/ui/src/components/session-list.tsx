@@ -7,6 +7,7 @@ import Kbd from "./kbd"
 import { keyboardRegistry } from "../lib/keyboard-registry"
 import { formatShortcut } from "../lib/keyboard-utils"
 import { showToastNotification } from "../lib/notifications"
+import { groupSessionsByParent } from "../lib/session-utils"
 
 
 interface SessionListProps {
@@ -268,32 +269,7 @@ const SessionList: Component<SessionListProps> = (props) => {
     )
   }
  
-  const sessionsByParent = createMemo(() => {
-    const grouped = new Map<string, { parent: Session; children: Session[] }>()
-    
-    for (const session of props.sessions.values()) {
-      if (session.parentId === null) {
-        grouped.set(session.id, { parent: session, children: [] })
-      }
-    }
-    
-    for (const session of props.sessions.values()) {
-      if (session.parentId !== null) {
-        const group = grouped.get(session.parentId)
-        if (group) {
-          group.children.push(session)
-        }
-      }
-    }
-    
-    for (const [_, group] of grouped) {
-      group.children.sort((a, b) => (b.time.updated || 0) - (a.time.updated || 0))
-    }
-    
-    return Array.from(grouped.values()).sort((a, b) => 
-      (b.parent.time.updated || 0) - (a.parent.time.updated || 0)
-    )
-  })
+  const sessionsByParent = createMemo(() => groupSessionsByParent(props.sessions))
  
   return (
     <div
