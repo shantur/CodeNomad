@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from "solid-js"
+import { Show, createSignal, onCleanup, onMount } from "solid-js"
 import { render } from "solid-js/web"
 import iconUrl from "../../images/CodeNomad-Icon.png"
 import { runtimeEnv, isTauriHost } from "../../lib/runtime-env"
@@ -17,12 +17,6 @@ const phrases = [
   "Letting the AI stretch before its coding sprint…",
   "Persuading the AI to give you keyboard control…",
 ]
-
-const hostStatusMap: Record<typeof runtimeEnv.host, string> = {
-  electron: "Starting desktop shell…",
-  tauri: "Starting native shell…",
-  web: "Connecting to CodeNomad…",
-}
 
 interface CliStatus {
   state?: string
@@ -71,7 +65,7 @@ function annotateDocument() {
 function LoadingApp() {
   const [phrase, setPhrase] = createSignal(pickPhrase())
   const [error, setError] = createSignal<string | null>(null)
-  const [status, setStatus] = createSignal<string>(hostStatusMap[runtimeEnv.host] ?? "Starting services…")
+  const [status, setStatus] = createSignal<string | null>(null)
 
   const changePhrase = () => setPhrase(pickPhrase(phrase()))
 
@@ -88,7 +82,7 @@ function LoadingApp() {
         const readyUnlisten = await tauriBridge.event.listen("cli:ready", (event) => {
           const payload = (event?.payload as CliStatus) || {}
           setError(null)
-          setStatus("Launching CodeNomad…")
+          setStatus(null)
           navigateTo(payload.url)
         })
         const errorUnlisten = await tauriBridge.event.listen("cli:error", (event) => {
@@ -100,13 +94,14 @@ function LoadingApp() {
         })
         const statusUnlisten = await tauriBridge.event.listen("cli:status", (event) => {
           const payload = (event?.payload as CliStatus) || {}
-          if (payload.state && payload.state !== "ready") {
-            setStatus(payload.state === "starting" ? "Starting services…" : "Preparing CodeNomad…")
-            setError(null)
-          }
           if (payload.state === "error" && payload.error) {
             setError(payload.error)
             setStatus("Encountered an issue")
+            return
+          }
+          if (payload.state && payload.state !== "ready") {
+            setError(null)
+            setStatus(null)
           }
         })
         unsubscribers.push(readyUnlisten, errorUnlisten, statusUnlisten)
@@ -144,7 +139,7 @@ function LoadingApp() {
       <img src={iconUrl} alt="CodeNomad" class="loading-logo" width="180" height="180" />
       <div class="loading-heading">
         <h1 class="loading-title">CodeNomad</h1>
-        <p class="loading-status">{status()}</p>
+        <Show when={status()}>{(statusText) => <p class="loading-status">{statusText()}</p>}</Show>
       </div>
       <div class="loading-card">
         <div class="loading-row">
