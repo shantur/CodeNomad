@@ -1,6 +1,6 @@
 {
   "name": "codenomad-workspace",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": true,
   "description": "CodeNomad monorepo workspace",
   "workspaces": {
