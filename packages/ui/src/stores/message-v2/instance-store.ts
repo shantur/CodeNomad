@@ -215,15 +215,7 @@ export function createInstanceMessageStore(instanceId: string): InstanceMessageS
     }
 
     setState("sessions", sessionId, session)
-    setState("sessionOrder", (order) => {
-      if (order.includes(sessionId)) {
-        return order
-      }
-      if (order.length >= 1024) {
-        return [...order.slice(-1023), sessionId]
-      }
-      return [...order, sessionId]
-    })
+    setState("sessionOrder", (order) => (order.includes(sessionId) ? order : [...order, sessionId]))
     return session
   }
 
@@ -246,9 +238,6 @@ export function createInstanceMessageStore(instanceId: string): InstanceMessageS
     setState("sessions", sessionId, "messageIds", (ids = []) => {
       if (ids.includes(messageId)) {
         return ids
-      }
-      if (ids.length >= 2048) {
-        return [...ids.slice(-2047), messageId]
       }
       return [...ids, messageId]
     })
