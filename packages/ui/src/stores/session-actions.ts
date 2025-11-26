@@ -1,21 +1,11 @@
-import type { Message } from "../types/message"
-
 import { resolvePastedPlaceholders } from "../lib/prompt-placeholders"
 import { instances } from "./instances"
 
-import {
-  addRecentModelPreference,
-  preferences,
-  setAgentModelPreference,
-} from "./preferences"
+import { addRecentModelPreference, setAgentModelPreference } from "./preferences"
 import { sessions, withSession } from "./session-state"
 import { getDefaultModel, isModelValid } from "./session-models"
-import {
-  computeDisplayParts,
-  getSessionIndex,
-  initializePartVersion,
-  updateSessionInfo,
-} from "./session-messages"
+import { updateSessionInfo } from "./session-messages"
+import { messageStoreBus } from "./message-v2/bus"
 
 const ID_LENGTH = 26
 const BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
@@ -93,26 +83,6 @@ async function sendMessage(
     },
   ]
 
-  const optimisticMessage: Message = {
-    id: messageId,
-    sessionId,
-    type: "user",
-    parts: optimisticParts,
-    timestamp: Date.now(),
-    status: "sending",
-    version: 0,
-  }
-
-  optimisticParts.forEach((part: any) => initializePartVersion(part))
-
-  optimisticMessage.displayParts = computeDisplayParts(optimisticMessage, preferences().showThinkingBlocks)
-
-  withSession(instanceId, sessionId, (session) => {
-    session.messages.push(optimisticMessage)
-    const index = getSessionIndex(instanceId, sessionId)
-    index.messageIndex.set(optimisticMessage.id, session.messages.length - 1)
-  })
-
   const requestParts: any[] = [
     {
       id: textPartId,
@@ -166,6 +136,24 @@ async function sendMessage(
       }
     }
   }
+
+  const store = messageStoreBus.getOrCreate(instanceId)
+  const createdAt = Date.now()
+
+  store.upsertMessage({
+    id: messageId,
+    sessionId,
+    role: "user",
+    status: "sending",
+    parts: optimisticParts,
+    createdAt,
+    updatedAt: createdAt,
+    isEphemeral: true,
+  })
+
+  withSession(instanceId, sessionId, () => {
+    /* trigger reactivity for legacy session data */
+  })
 
   const requestBody = {
     messageID: messageId,
