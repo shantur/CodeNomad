@@ -917,7 +917,7 @@ function ReasoningCard(props: ReasoningCardProps) {
     <div class="message-item-base assistant-message bg-[var(--message-assistant-bg)] border-l-4 border-[var(--message-assistant-border)]">
       <div class="reasoning-card-header">
         <div class="flex flex-col">
-          <span class="font-semibold text-xs text-[var(--message-assistant-border)]">Thinking</span>
+          <span class="text-xs text-[var(--message-assistant-border)]">Thinking</span>
         </div>
         <div class="reasoning-card-header-right">
           <button type="button" class="reasoning-card-toggle" onClick={toggle} aria-expanded={expanded()} aria-label={expanded() ? "Collapse thinking" : "Expand thinking"}>

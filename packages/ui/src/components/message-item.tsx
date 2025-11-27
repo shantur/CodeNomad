@@ -173,7 +173,7 @@ export default function MessageItem(props: MessageItemProps) {
             <span class="font-semibold text-xs text-[var(--message-user-border)]">You</span>
           </Show>
           <Show when={!isUser()}>
-            <span class="font-semibold text-xs text-[var(--message-assistant-border)]">Assistant</span>
+            <span class="text-xs text-[var(--message-assistant-border)]">Assistant</span>
           </Show>
         </div>
         <div class="flex items-center gap-2">
