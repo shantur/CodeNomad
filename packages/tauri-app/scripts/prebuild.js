@@ -114,6 +114,40 @@ function ensureUiDevDependencies() {
   })
 }
 
+function ensureRollupPlatformBinary() {
+  if (process.platform !== "linux" || process.arch !== "x64") {
+    return
+  }
+
+  const rollupLinuxPath = path.join(
+    workspaceRoot,
+    "node_modules",
+    "@rollup",
+    "rollup-linux-x64-gnu",
+  )
+
+  if (fs.existsSync(rollupLinuxPath)) {
+    return
+  }
+
+  let rollupVersion = ""
+  try {
+    rollupVersion = require(path.join(workspaceRoot, "node_modules", "rollup", "package.json")).version
+  } catch (error) {
+    // leave version empty; fallback install will use latest compatible
+  }
+
+  const packageSpec = rollupVersion
+    ? `@rollup/rollup-linux-x64-gnu@${rollupVersion}`
+    : "@rollup/rollup-linux-x64-gnu"
+
+  console.log("[prebuild] installing rollup linux binary (optional dep workaround)...")
+  execSync(`npm install ${packageSpec} --no-save --ignore-scripts --fund=false --audit=false`, {
+    cwd: workspaceRoot,
+    stdio: "inherit",
+  })
+}
+
 function copyServerArtifacts() {
   fs.rmSync(serverDest, { recursive: true, force: true })
   fs.mkdirSync(serverDest, { recursive: true })
@@ -151,6 +185,7 @@ function copyUiLoadingAssets() {
 
 ensureServerDevDependencies()
 ensureUiDevDependencies()
+ensureRollupPlatformBinary()
 ensureServerBuild()
 ensureUiBuild()
 ensureServerDependencies()
