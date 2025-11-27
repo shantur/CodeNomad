@@ -339,10 +339,19 @@ export default function MessageStreamV2(props: MessageStreamV2Props) {
           return
         }
 
-        if (part.type === "step-start" || part.type === "step-finish") {
+        if (part.type === "step-start") {
           flushContent()
           const key = makeInstanceCacheKey(instanceId, `${record.id}:${part.id ?? partIndex}:${part.type}`)
           items.push({ type: part.type, key, part, messageInfo })
+          return
+        }
+
+        if (part.type === "step-finish") {
+          flushContent()
+          if (showUsageMetrics) {
+            const key = makeInstanceCacheKey(instanceId, `${record.id}:${part.id ?? partIndex}:${part.type}`)
+            items.push({ type: part.type, key, part, messageInfo })
+          }
           return
         }
 
@@ -741,17 +750,6 @@ interface StepCardProps {
 }
 
 function StepCard(props: StepCardProps) {
-  const snapshot = () => {
-    const value = (props.part as { snapshot?: string }).snapshot
-    return typeof value === "string" ? value : ""
-  }
-
-  const reason = () => {
-    if (props.kind !== "finish") return ""
-    const value = (props.part as { reason?: string }).reason
-    return typeof value === "string" ? value : ""
-  }
-
   const timestamp = () => {
     const value = props.messageInfo?.time?.created ?? (props.part as any)?.time?.start ?? Date.now()
     const date = new Date(value)
@@ -800,60 +798,67 @@ function StepCard(props: StepCardProps) {
     }
   }
 
+  type UsageInfo = NonNullable<ReturnType<typeof usageStats>>
+
+  const renderUsageChips = (usage: UsageInfo) => (
+    <div class="message-step-usage">
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Input</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage.input)}</span>
+      </div>
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Output</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage.output)}</span>
+      </div>
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Reasoning</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage.reasoning)}</span>
+      </div>
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cache Read</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage.cacheRead)}</span>
+      </div>
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cache Write</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage.cacheWrite)}</span>
+      </div>
+      <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
+        <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cost</span>
+        <span class="font-semibold text-[var(--text-primary)]">{formatCostValue(usage.cost)}</span>
+      </div>
+    </div>
+  )
+
+  if (props.kind === "finish") {
+    const usage = usageStats()
+    if (!usage) {
+      return null
+    }
+    return (
+      <div class={`message-step-card message-step-finish`}>
+        {renderUsageChips(usage)}
+      </div>
+    )
+  }
+
   return (
-    <div class={`message-step-card ${props.kind === "start" ? "message-step-start" : "message-step-finish"}`}>
+    <div class={`message-step-card message-step-start`}>
       <div class="message-step-heading">
         <div class="message-step-title">
           <div class="message-step-title-left">
-            <Show when={props.kind === "start" && props.showAgentMeta && (agentIdentifier() || modelIdentifier())}>
+            <Show when={props.showAgentMeta && (agentIdentifier() || modelIdentifier())}>
               <span class="message-step-meta-inline">
                 <Show when={agentIdentifier()}>{(value) => <span>Agent: {value()}</span>}</Show>
                 <Show when={modelIdentifier()}>{(value) => <span>Model: {value()}</span>}</Show>
               </span>
             </Show>
-            <span>{props.kind === "start" ? "Step started" : "Step finished"}</span>
           </div>
           <span class="message-step-time">{timestamp()}</span>
         </div>
-        <Show when={props.kind === "finish" && reason()}>{(value) => <span class="message-step-reason">{value()}</span>}</Show>
       </div>
-      <Show when={usageStats()}>
-        {(usage) => (
-          <div class="mt-3 flex flex-wrap items-center gap-1 text-[10px] text-[var(--text-muted)]">
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Input</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage().input)}</span>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Output</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage().output)}</span>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Reasoning</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage().reasoning)}</span>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cache Read</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage().cacheRead)}</span>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cache Write</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatTokenTotal(usage().cacheWrite)}</span>
-            </div>
-            <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
-              <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Cost</span>
-              <span class="font-semibold text-[var(--text-primary)]">{formatCostValue(usage().cost)}</span>
-            </div>
-          </div>
-        )}
-      </Show>
-      <Show when={props.kind === "finish" && !props.showUsage}>
-        <div class="message-step-finish-spacer" aria-hidden="true" />
-      </Show>
     </div>
   )
 }
-
 function formatCostValue(value: number) {
   if (!value) return "$0.00"
   if (value < 0.01) return `$${value.toPrecision(2)}`
