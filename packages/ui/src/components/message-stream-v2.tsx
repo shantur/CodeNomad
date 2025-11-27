@@ -798,9 +798,7 @@ function StepCard(props: StepCardProps) {
     }
   }
 
-  type UsageInfo = NonNullable<ReturnType<typeof usageStats>>
-
-  const renderUsageChips = (usage: UsageInfo) => (
+  const renderUsageChips = (usage: NonNullable<ReturnType<typeof usageStats>>) => (
     <div class="message-step-usage">
       <div class="inline-flex items-center gap-1 rounded-full border border-[var(--border-base)] px-2 py-0.5 text-[10px]">
         <span class="uppercase text-[9px] tracking-wide text-[var(--text-muted)]">Input</span>
@@ -919,21 +917,27 @@ function ReasoningCard(props: ReasoningCardProps) {
   const toggle = () => setExpanded((prev) => !prev)
 
   return (
-    <div class="message-item-base assistant-message bg-[var(--message-assistant-bg)] border-l-4 border-[var(--message-assistant-border)]">
-      <div class="reasoning-card-header">
-        <div class="flex flex-col">
-          <span class="text-xs text-[var(--message-assistant-border)]">Thinking</span>
-        </div>
-        <div class="reasoning-card-header-right">
-          <button type="button" class="reasoning-card-toggle" onClick={toggle} aria-expanded={expanded()} aria-label={expanded() ? "Collapse thinking" : "Expand thinking"}>
-            {expanded() ? "Collapse" : "Expand"}
-          </button>
-          <span class="reasoning-card-time">{timestamp()}</span>
-        </div>
-      </div>
+    <div class="message-reasoning-card">
+      <button
+        type="button"
+        class="message-reasoning-toggle"
+        onClick={toggle}
+        aria-expanded={expanded()}
+        aria-label={expanded() ? "Collapse thinking" : "Expand thinking"}
+      >
+        <span class="message-reasoning-label">Thinking</span>
+        <span class="message-reasoning-meta">
+          <span class="message-reasoning-indicator">{expanded() ? "Hide" : "View"}</span>
+          <span class="message-reasoning-time">{timestamp()}</span>
+        </span>
+      </button>
+
       <Show when={expanded()}>
-        <div class="reasoning-card-body">
-          <pre class="reasoning-card-text">{reasoningText() || ""}</pre>
+        <div class="message-reasoning-expanded">
+          <div class="message-reasoning-divider" aria-hidden="true" />
+          <div class="message-reasoning-body">
+            <pre class="message-reasoning-text">{reasoningText() || ""}</pre>
+          </div>
         </div>
       </Show>
     </div>
