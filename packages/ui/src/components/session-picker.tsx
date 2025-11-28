@@ -1,9 +1,10 @@
-import { Component, createSignal, Show, For, createEffect } from "solid-js"
+import { Component, createSignal, Show, For, createEffect, createMemo } from "solid-js"
 import { Dialog } from "@kobalte/core/dialog"
-import type { Session, Agent } from "../types/session"
-import { getParentSessions, createSession, setActiveParentSession } from "../stores/sessions"
+import type { Session } from "../types/session"
+import { getSessions, createSession, setActiveParentSession } from "../stores/sessions"
 import { instances, stopInstance } from "../stores/instances"
 import { agents } from "../stores/sessions"
+import { groupSessionsByParent } from "../lib/session-utils"
 
 interface SessionPickerProps {
   instanceId: string
@@ -16,8 +17,10 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
   const [isCreating, setIsCreating] = createSignal(false)
 
   const instance = () => instances().get(props.instanceId)
-  const parentSessions = () => getParentSessions(props.instanceId)
+  const allSessions = () => getSessions(props.instanceId)
   const agentList = () => agents().get(props.instanceId) || []
+
+  const sessionsByParent = createMemo(() => groupSessionsByParent(allSessions()))
 
   createEffect(() => {
     const list = agentList()
@@ -76,32 +79,56 @@ const SessionPicker: Component<SessionPickerProps> = (props) => {
               OpenCode • {instance()?.folder.split("/").pop()}
             </Dialog.Title>
 
-            <div class="space-y-6">
+             <div class="space-y-6">
               <Show
-                when={parentSessions().length > 0}
+                when={sessionsByParent().length > 0}
                 fallback={<div class="text-center py-4 text-sm text-muted">No previous sessions</div>}
               >
                 <div>
                   <h3 class="text-sm font-medium text-secondary mb-2">
-                    Resume a session ({parentSessions().length}):
+                    Resume a session ({allSessions().length} total):
                   </h3>
-                  <div class="space-y-1 max-h-[400px] overflow-y-auto">
-                    <For each={parentSessions()}>
-                      {(session) => (
-                        <button
-                          type="button"
-                          class="selector-option w-full text-left hover:bg-surface-hover focus:bg-surface-hover"
-                          onClick={() => handleSessionSelect(session.id)}
-                        >
-                          <div class="selector-option-content w-full">
-                            <span class="selector-option-label truncate">
-                              {session.title || "Untitled"}
+                  <div class="space-y-2 max-h-[400px] overflow-y-auto">
+                    <For each={sessionsByParent()}>
+                      {({ parent, children }) => (
+                        <div class="space-y-1">
+                          <button
+                            type="button"
+                            class="selector-option w-full text-left hover:bg-surface-hover focus:bg-surface-hover"
+                            onClick={() => handleSessionSelect(parent.id)}
+                          >
+                            <div class="selector-option-content w-full">
+                              <span class="selector-option-label truncate">
+                                {parent.title || "Untitled"}
+                              </span>
+                            </div>
+                            <span class="selector-badge-time flex-shrink-0">
+                              {formatRelativeTime(parent.time.updated)}
                             </span>
-                          </div>
-                          <span class="selector-badge-time flex-shrink-0">
-                            {formatRelativeTime(session.time.updated)}
-                          </span>
-                        </button>
+                          </button>
+                          <Show when={children.length > 0}>
+                            <div class="ml-4 space-y-1 border-l border-base pl-3">
+                              <For each={children}>
+                                {(child) => (
+                                  <button
+                                    type="button"
+                                    class="selector-option w-full text-left hover:bg-surface-hover focus:bg-surface-hover text-sm"
+                                    onClick={() => handleSessionSelect(child.id)}
+                                  >
+                                    <div class="selector-option-content w-full">
+                                      <span class="selector-option-label truncate text-muted">
+                                        ↳ {child.title || "Untitled"}
+                                      </span>
+                                    </div>
+                                    <span class="selector-badge-time flex-shrink-0 text-xs">
+                                      {formatRelativeTime(child.time.updated)}
+                                    </span>
+                                  </button>
+                                )}
+                              </For>
+                            </div>
+                          </Show>
+                        </div>
                       )}
                     </For>
                   </div>

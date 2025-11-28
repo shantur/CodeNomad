@@ -2,7 +2,7 @@ import { Show, createMemo, createSignal, type Component } from "solid-js"
 import type { Accessor } from "solid-js"
 import type { Instance } from "../../types/instance"
 import type { Command } from "../../lib/commands"
-import { activeParentSessionId, activeSessionId as activeSessionMap, getSessionFamily, setActiveSession } from "../../stores/sessions"
+import { activeParentSessionId, activeSessionId as activeSessionMap, getSessions, setActiveSession } from "../../stores/sessions"
 import { keyboardRegistry, type KeyboardShortcut } from "../../lib/keyboard-registry"
 import { buildCustomCommandEntries } from "../../lib/command-utils"
 import { getCommands as getInstanceCommands } from "../../stores/commands"
@@ -34,11 +34,9 @@ const DEFAULT_SESSION_SIDEBAR_WIDTH = 350
 const InstanceShell: Component<InstanceShellProps> = (props) => {
   const [sessionSidebarWidth, setSessionSidebarWidth] = createSignal(DEFAULT_SESSION_SIDEBAR_WIDTH)
 
-  const activeSessions = createMemo(() => {
-    const parentId = activeParentSessionId().get(props.instance.id)
-    if (!parentId) return new Map<string, ReturnType<typeof getSessionFamily>[number]>()
-    const sessionFamily = getSessionFamily(props.instance.id, parentId)
-    return new Map(sessionFamily.map((s) => [s.id, s]))
+  const allSessionsMap = createMemo(() => {
+    const allSessions = getSessions(props.instance.id)
+    return new Map(allSessions.map((s) => [s.id, s]))
   })
 
   const activeSessionIdForInstance = createMemo(() => {
@@ -48,7 +46,7 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
   const activeSessionForInstance = createMemo(() => {
     const sessionId = activeSessionIdForInstance()
     if (!sessionId || sessionId === "info") return null
-    return activeSessions().get(sessionId) ?? null
+    return allSessionsMap().get(sessionId) ?? null
   })
 
   const customCommands = createMemo(() => buildCustomCommandEntries(props.instance.id, getInstanceCommands(props.instance.id)))
@@ -67,12 +65,12 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
 
   return (
     <>
-      <Show when={activeSessions().size > 0} fallback={<InstanceWelcomeView instance={props.instance} />}>
+      <Show when={activeSessionIdForInstance() !== null} fallback={<InstanceWelcomeView instance={props.instance} />}>
         <div class="flex flex-1 min-h-0">
           <div class="session-sidebar flex flex-col bg-surface-secondary" style={{ width: `${sessionSidebarWidth()}px` }}>
             <SessionList
               instanceId={props.instance.id}
-              sessions={activeSessions()}
+              sessions={allSessionsMap()}
               activeSessionId={activeSessionIdForInstance()}
               onSelect={handleSessionSelect}
               onClose={(id) => {
@@ -156,7 +154,7 @@ const InstanceShell: Component<InstanceShellProps> = (props) => {
                   {(sessionId) => (
                     <SessionView
                       sessionId={sessionId}
-                      activeSessions={activeSessions()}
+                      allSessionsMap={allSessionsMap()}
                       instanceId={props.instance.id}
                       instanceFolder={props.instance.folder}
                       escapeInDebounce={props.escapeInDebounce}

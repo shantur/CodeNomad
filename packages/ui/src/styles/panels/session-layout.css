@@ -116,8 +116,33 @@ session-sidebar-controls .selector-trigger-primary {
 }
 
 .session-list-item {
-  @apply border-b last:border-b-0;
   border-color: var(--border-base);
+}
+
+/* Individual items (like in Instance section) need borders */
+.session-section > .session-list-item {
+  @apply border-b;
+}
+
+/* Remove border from last individual item */
+.session-section > .session-list-item:last-child {
+  @apply border-b-0;
+}
+
+/* Remove border from parent item in groups (children will be below it) */
+.session-group > .session-list-item {
+  @apply border-b-0;
+}
+
+/* Add border to session groups to separate them */
+.session-group {
+  @apply border-b;
+  border-color: var(--border-base);
+}
+
+/* Remove border from last session group */
+.session-section > .session-group:last-child {
+  @apply border-b-0;
 }
 
 .session-item-base {
@@ -194,6 +219,15 @@ session-sidebar-controls .selector-trigger-primary {
   @apply ring-2 ring-offset-1;
   ring-color: var(--accent-primary);
   ring-offset-color: inherit;
+}
+
+.session-item-chevron {
+  @apply w-4 h-4 flex-shrink-0 transition-transform duration-200;
+  transform: rotate(90deg);
+}
+
+.session-item-chevron.collapsed {
+  transform: rotate(0deg);
 }
 
 .session-list-footer {

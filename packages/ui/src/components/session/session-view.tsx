@@ -15,14 +15,14 @@ function isTextPart(part: ClientPart): part is ClientPart & { type: "text"; text
 
 interface SessionViewProps {
   sessionId: string
-  activeSessions: Map<string, Session>
+  allSessionsMap: Map<string, Session>
   instanceId: string
   instanceFolder: string
   escapeInDebounce: boolean
 }
 
 export const SessionView: Component<SessionViewProps> = (props) => {
-  const session = () => props.activeSessions.get(props.sessionId)
+  const session = () => props.allSessionsMap.get(props.sessionId)
   const messagesLoading = createMemo(() => isSessionMessagesLoading(props.instanceId, props.sessionId))
   const messageStore = createMemo(() => messageStoreBus.getOrCreate(props.instanceId))
 

@@ -1,12 +1,14 @@
 import { Component, For, Show, createSignal, createEffect, onCleanup, onMount, createMemo, JSX } from "solid-js"
-import type { Session, SessionStatus } from "../types/session"
+import type { Session, SessionStatus, Agent } from "../types/session"
 import { getSessionStatus } from "../stores/session-status"
-import { MessageSquare, Info, X, Copy } from "lucide-solid"
+import { MessageSquare, Info, Trash2, Copy, Bot, GitFork, ChevronRight, ChevronDown } from "lucide-solid"
 import KeyboardHint from "./keyboard-hint"
 import Kbd from "./kbd"
 import { keyboardRegistry } from "../lib/keyboard-registry"
 import { formatShortcut } from "../lib/keyboard-utils"
 import { showToastNotification } from "../lib/notifications"
+import { groupSessionsByParent } from "../lib/session-utils"
+import { agents } from "../stores/sessions"
 
 
 interface SessionListProps {
@@ -39,6 +41,27 @@ function formatSessionStatus(status: SessionStatus): string {
   }
 }
 
+function getSessionIcon(session: Session | undefined, instanceAgents: Agent[]): typeof MessageSquare {
+  if (!session) return MessageSquare
+
+  // Check if this is a subagent session (we have to check
+  // against the session title because CodeNomad has no control
+  // over the Task tool, and OpenCode doesn't send back any agent
+  // data when it creates the Task subagent session)
+  if (session.title?.includes("subagent)")) {
+    return Bot
+  }
+
+  // Check if this is a forked child session
+  if (false) { // TODO: wait for SDK changes
+    return GitFork
+  }
+
+
+  // Default to message bubble for parent sessions
+  return MessageSquare
+}
+
 function arraysEqual(prev: readonly string[] | undefined, next: readonly string[]): boolean {
   if (!prev) {
     return false
@@ -62,8 +85,9 @@ const SessionList: Component<SessionListProps> = (props) => {
   const [isResizing, setIsResizing] = createSignal(false)
   const [startX, setStartX] = createSignal(0)
   const [startWidth, setStartWidth] = createSignal(DEFAULT_WIDTH)
+  const [collapsedParents, setCollapsedParents] = createSignal<Set<string>>(new Set())
   const infoShortcut = keyboardRegistry.get("switch-to-info")
-
+  
   const selectSession = (sessionId: string) => {
     props.onSelect(sessionId)
   }
@@ -94,15 +118,15 @@ const SessionList: Component<SessionListProps> = (props) => {
   createEffect(() => {
     props.onWidthChange?.(sidebarWidth())
   })
- 
+
   const copySessionId = async (event: MouseEvent, sessionId: string) => {
     event.stopPropagation()
- 
+
     try {
       if (typeof navigator === "undefined" || !navigator.clipboard) {
         throw new Error("Clipboard API unavailable")
       }
- 
+
       await navigator.clipboard.writeText(sessionId)
       showToastNotification({ message: "Session ID copied", variant: "success" })
     } catch (error) {
@@ -110,9 +134,9 @@ const SessionList: Component<SessionListProps> = (props) => {
       showToastNotification({ message: "Unable to copy session ID", variant: "error" })
     }
   }
- 
+
   const clampWidth = (width: number) => Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, width))
- 
+
 
   const removeMouseListeners = () => {
     if (mouseMoveHandler) {
@@ -124,7 +148,7 @@ const SessionList: Component<SessionListProps> = (props) => {
       mouseUpHandler = null
     }
   }
- 
+
   const removeTouchListeners = () => {
     if (touchMoveHandler) {
       document.removeEventListener("touchmove", touchMoveHandler)
@@ -135,24 +159,24 @@ const SessionList: Component<SessionListProps> = (props) => {
       touchEndHandler = null
     }
   }
- 
+
   const stopResizing = () => {
     setIsResizing(false)
     removeMouseListeners()
     removeTouchListeners()
   }
- 
+
   const handleMouseMove = (event: MouseEvent) => {
     if (!isResizing()) return
     const diff = event.clientX - startX()
     const newWidth = clampWidth(startWidth() + diff)
     setSidebarWidth(newWidth)
   }
- 
+
   const handleMouseUp = () => {
     stopResizing()
   }
- 
+
   const handleTouchMove = (event: TouchEvent) => {
     if (!isResizing()) return
     const touch = event.touches[0]
@@ -161,24 +185,24 @@ const SessionList: Component<SessionListProps> = (props) => {
     const newWidth = clampWidth(startWidth() + diff)
     setSidebarWidth(newWidth)
   }
- 
+
   const handleTouchEnd = () => {
     stopResizing()
   }
- 
+
   const handleMouseDown = (event: MouseEvent) => {
     event.preventDefault()
     setIsResizing(true)
     setStartX(event.clientX)
     setStartWidth(sidebarWidth())
- 
+
     mouseMoveHandler = handleMouseMove
     mouseUpHandler = handleMouseUp
- 
+
     document.addEventListener("mousemove", handleMouseMove)
     document.addEventListener("mouseup", handleMouseUp)
   }
- 
+
   const handleTouchStart = (event: TouchEvent) => {
     event.preventDefault()
     const touch = event.touches[0]
@@ -186,20 +210,20 @@ const SessionList: Component<SessionListProps> = (props) => {
     setIsResizing(true)
     setStartX(touch.clientX)
     setStartWidth(sidebarWidth())
- 
+
     touchMoveHandler = handleTouchMove
     touchEndHandler = handleTouchEnd
- 
+
     document.addEventListener("touchmove", handleTouchMove)
     document.addEventListener("touchend", handleTouchEnd)
   }
- 
+
   onCleanup(() => {
     removeMouseListeners()
     removeTouchListeners()
   })
- 
-  const SessionRow: Component<{ sessionId: string; canClose?: boolean }> = (rowProps) => {
+
+  const SessionRow: Component<{ sessionId: string; canClose?: boolean; hasChildren?: boolean; isExpanded?: boolean; onToggleExpand?: () => void }> = (rowProps) => {
     const session = () => props.sessions.get(rowProps.sessionId)
     if (!session()) {
       return <></>
@@ -211,92 +235,85 @@ const SessionList: Component<SessionListProps> = (props) => {
     const pendingPermission = () => Boolean(session()?.pendingPermission)
     const statusClassName = () => (pendingPermission() ? "session-permission" : `session-${status()}`)
     const statusText = () => (pendingPermission() ? "Needs Permission" : statusLabel())
- 
+    const instanceAgents = () => agents().get(props.instanceId) || []
+    const SessionIcon = getSessionIcon(session(), instanceAgents())
+
     return (
        <div class="session-list-item group">
 
-        <button
-          class={`session-item-base ${isActive() ? "session-item-active" : "session-item-inactive"}`}
-          onClick={() => selectSession(rowProps.sessionId)}
-          title={title()}
-          role="button"
-          aria-selected={isActive()}
-        >
-          <div class="session-item-row session-item-header">
-            <div class="session-item-title-row">
-              <MessageSquare class="w-4 h-4 flex-shrink-0" />
-              <span class="session-item-title truncate">{title()}</span>
-            </div>
-            <Show when={rowProps.canClose}>
-              <span
-                class="session-item-close opacity-80 hover:opacity-100 hover:bg-status-error hover:text-white rounded p-0.5 transition-all"
-                onClick={(event) => {
-                  event.stopPropagation()
-                  props.onClose(rowProps.sessionId)
-                }}
-                role="button"
-                tabIndex={0}
-                aria-label="Close session"
-              >
-                <X class="w-3 h-3" />
-              </span>
-            </Show>
-          </div>
-          <div class="session-item-row session-item-meta">
-            <span class={`status-indicator session-status session-status-list ${statusClassName()}`}>
-              <span class="status-dot" />
-              {statusText()}
-            </span>
-            <div class="session-item-actions">
-              <span
-                class={`session-item-close opacity-80 hover:opacity-100 ${isActive() ? "hover:bg-white/20" : "hover:bg-surface-hover"}`}
-                onClick={(event) => copySessionId(event, rowProps.sessionId)}
-                role="button"
-                tabIndex={0}
-                aria-label="Copy session ID"
-                title="Copy session ID"
-              >
-                <Copy class="w-3 h-3" />
-              </span>
-            </div>
-          </div>
-        </button>
-      </div>
-    )
+         <button
+           class={`session-item-base ${isActive() ? "session-item-active" : "session-item-inactive"}`}
+           onClick={() => selectSession(rowProps.sessionId)}
+           title={title()}
+           role="button"
+           aria-selected={isActive()}
+         >
+           <div class="session-item-row session-item-header">
+             <div class="session-item-title-row">
+               <Show when={rowProps.hasChildren}>
+                 <button
+                   class="session-expand-toggle opacity-60 hover:opacity-100 transition-transform"
+                   onClick={(event) => {
+                     event.stopPropagation()
+                     rowProps.onToggleExpand?.()
+                   }}
+                   aria-label={rowProps.isExpanded ? "Collapse session group" : "Expand session group"}
+                   title={rowProps.isExpanded ? "Collapse" : "Expand"}
+                 >
+                   <Show when={rowProps.isExpanded} fallback={<ChevronRight class="w-4 h-4" />}>
+                     <ChevronDown class="w-4 h-4" />
+                   </Show>
+                 </button>
+               </Show>
+               <SessionIcon class="w-4 h-4 flex-shrink-0" />
+               <span class="session-item-title truncate">{title()}</span>
+             </div>
+             <Show when={rowProps.canClose}>
+               <span
+                 class="session-item-action opacity-80 hover:opacity-100 hover:bg-[var(--status-error)] hover:text-white rounded p-0.5 transition-all"
+                 onClick={(event) => {
+                   event.stopPropagation()
+                   props.onClose(rowProps.sessionId)
+                 }}
+                 role="button"
+                 tabIndex={0}
+                 aria-label="Delete session"
+                 title="Delete session"
+               >
+                 <Trash2 class="w-3 h-3" />
+               </span>
+             </Show>
+           </div>
+           <div class="session-item-row session-item-meta">
+             <span class={`status-indicator session-status session-status-list ${statusClassName()}`}>
+               <span class="status-dot" />
+               {statusText()}
+             </span>
+             <div class="session-item-actions">
+               <span
+                 class={`session-item-close opacity-80 hover:opacity-100 ${isActive() ? "hover:bg-white/20" : "hover:bg-surface-hover"}`}
+                 onClick={(event) => copySessionId(event, rowProps.sessionId)}
+                 role="button"
+                 tabIndex={0}
+                 aria-label="Copy session ID"
+                 title="Copy session ID"
+               >
+                 <Copy class="w-3 h-3" />
+               </span>
+             </div>
+           </div>
+         </button>
+       </div>
+     )
   }
- 
-  const userSessionIds = createMemo(
-    () => {
-      const ids: string[] = []
-      for (const session of props.sessions.values()) {
-        if (session.parentId === null) {
-          ids.push(session.id)
-        }
-      }
-      return ids
-    },
-    undefined,
-    { equals: arraysEqual },
-  )
- 
-  const childSessionIds = createMemo(
-    () => {
-      const children: { id: string; updated: number }[] = []
-      for (const session of props.sessions.values()) {
-        if (session.parentId !== null) {
-          children.push({ id: session.id, updated: session.time.updated ?? 0 })
-        }
-      }
-      if (children.length <= 1) {
-        return children.map((entry) => entry.id)
-      }
-      children.sort((a, b) => b.updated - a.updated)
-      return children.map((entry) => entry.id)
-    },
-    undefined,
-    { equals: arraysEqual },
-  )
- 
+
+  const sessionsByParent = createMemo(() => groupSessionsByParent(props.sessions))
+
+  createEffect(() => {
+    setCollapsedParents(prev => new Set(sessionsByParent().map(x => x.parent.id)))
+  })
+
+
   return (
     <div
 
@@ -349,21 +366,48 @@ const SessionList: Component<SessionListProps> = (props) => {
           </div>
 
 
-        <Show when={userSessionIds().length > 0}>
+        <Show when={sessionsByParent().length > 0}>
           <div class="session-section">
             <div class="session-section-header px-3 py-2 text-xs font-semibold text-primary/70 uppercase tracking-wide">
-              User Session
+              Sessions ({props.sessions.size} total)
             </div>
-            <For each={userSessionIds()}>{(id) => <SessionRow sessionId={id} canClose />}</For>
-          </div>
-        </Show>
+            <For each={sessionsByParent()}>
+              {({ parent, children }) => {
+                const hasChildren = children.length > 0
+                const isParentActive = () => props.activeSessionId === parent.id
+                const isChildActive = () => children.some(child => props.activeSessionId === child.id)
+                const isExpanded = () => !collapsedParents().has(parent.id) || (isParentActive() || isChildActive())
 
-        <Show when={childSessionIds().length > 0}>
-          <div class="session-section">
-            <div class="session-section-header px-3 py-2 text-xs font-semibold text-primary/70 uppercase tracking-wide">
-              Agent Sessions
-            </div>
-            <For each={childSessionIds()}>{(id) => <SessionRow sessionId={id} />}</For>
+                return (
+                  <div class="session-group">
+                    <SessionRow
+                      sessionId={parent.id}
+                      canClose
+                      hasChildren={hasChildren}
+                      isExpanded={isExpanded()}
+                      onToggleExpand={() => {
+                        setCollapsedParents(prev => {
+                          const next = new Set(prev)
+                          if (next.has(parent.id)) {
+                            next.delete(parent.id)
+                          } else {
+                            next.add(parent.id)
+                          }
+                          return next
+                        })
+                      }}
+                    />
+                    <Show when={hasChildren && isExpanded()}>
+                      <div class="ml-4 border-l border-base pl-3">
+                        <For each={children}>
+                          {(child) => <SessionRow sessionId={child.id} />}
+                        </For>
+                      </div>
+                    </Show>
+                  </div>
+                )
+              }}
+            </For>
           </div>
         </Show>
       </div>

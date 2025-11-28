@@ -6,3 +6,6 @@ release/
 .vite/
 .electron-vite/
 out/
+.dir-locals.el
+.editorconfig
+.prettierrc
