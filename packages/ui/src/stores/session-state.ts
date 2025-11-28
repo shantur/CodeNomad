@@ -1,6 +1,9 @@
 import { createSignal } from "solid-js"
 
 import type { Session, Agent, Provider } from "../types/session"
+import { deleteSession, loadMessages } from "./session-api"
+import { showToastNotification } from "../lib/notifications"
+import { messageStoreBus } from "./message-v2/bus"
 
 export interface SessionInfo {
   cost: number
@@ -221,6 +224,86 @@ function getSessionInfo(instanceId: string, sessionId: string): SessionInfo | un
   return sessionInfoByInstance().get(instanceId)?.get(sessionId)
 }
 
+async function isBlankSession(session: Session, instanceId: string, fetchIfNeeded = false): Promise<boolean> {
+  const loadedSet = messagesLoaded().get(instanceId)
+  const notLoaded = !loadedSet?.has(session.id)
+
+  if (notLoaded && !fetchIfNeeded) {
+    return false
+  }
+
+  if (notLoaded && fetchIfNeeded) {
+    await loadMessages(instanceId, session.id)
+  }
+
+  const store = messageStoreBus.getOrCreate(instanceId)
+  const messageIds = store.getSessionMessageIds(session.id)
+  const usage = store.getSessionUsage(session.id)
+
+  if (session.parentId === null) {
+    // Parent session: check tokens and children
+    const hasChildren = getChildSessions(instanceId, session.id).length > 0
+    const hasZeroTokens = usage ? usage.actualUsageTokens === 0 : true
+
+    return hasZeroTokens && !hasChildren
+  } else if (session.title?.includes("subagent")) {
+    // Subagent session
+    if (messageIds.length === 0) return true
+
+    // Check for streaming or tool parts in last message
+    const lastMessageId = messageIds[messageIds.length - 1]
+    const lastMessage = store.getMessage(lastMessageId)
+    if (!lastMessage) return false
+
+    const hasToolPart = Object.values(lastMessage.parts).some((part) => part.data.type === "tool")
+    const hasStreaming = messageIds.some((id) => {
+      const msg = store.getMessage(id)
+      return msg?.status === "streaming"
+    })
+    const isWaitingForPermission = session.pendingPermission === true
+
+    return !hasStreaming && !isWaitingForPermission && !hasToolPart
+  } else {
+    // Fork session
+    if (messageIds.length === 0) return true
+
+    const lastMessageId = messageIds[messageIds.length - 1]
+    const revert = store.getSessionRevert(session.id)
+
+    return lastMessageId === revert?.messageID
+  }
+}
+
+async function cleanupBlankSessions(instanceId: string, excludeSessionId?: string, fetchIfNeeded = false): Promise<void> {
+  const instanceSessions = sessions().get(instanceId)
+  if (!instanceSessions) return
+
+  const cleanupPromises = Array.from(instanceSessions)
+    .filter(([sessionId]) => sessionId !== excludeSessionId)
+    .map(async ([sessionId, session]) => {
+      const isBlank = await isBlankSession(session, instanceId, fetchIfNeeded)
+      if (!isBlank) return false
+
+      await deleteSession(instanceId, sessionId).catch((error: Error) => {
+        console.error(`Failed to delete blank session ${sessionId}:`, error)
+      })
+      return true
+    })
+
+  if (cleanupPromises.length > 0) {
+    console.log(`Cleaning up ${cleanupPromises.length} blank sessions`)
+    const deletionResults = await Promise.all(cleanupPromises)
+    const deletedCount = deletionResults.filter(Boolean).length
+
+    if (deletedCount > 0) {
+      showToastNotification({
+        message: `Cleaned up ${deletedCount} blank session${deletedCount === 1 ? "" : "s"}`,
+        variant: "info"
+      })
+    }
+  }
+}
+
 export {
   sessions,
   setSessions,
@@ -259,4 +342,6 @@ export {
   isSessionBusy,
   isSessionMessagesLoading,
   getSessionInfo,
+  isBlankSession,
+  cleanupBlankSessions,
 }

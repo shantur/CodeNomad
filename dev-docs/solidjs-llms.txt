@@ -1,0 +1,82 @@
+# SolidJS Documentation
+
+> Solid is a modern JavaScript framework for building user interfaces with fine-grained reactivity. It compiles JSX to real DOM elements and updates only what changes, delivering exceptional performance without a virtual DOM. Solid provides reactive primitives like signals, effects, and stores for predictable state management.
+
+SolidJS is a declarative JavaScript framework that prioritizes performance and developer experience. Unlike frameworks that re-run components on every update, Solid components run once during initialization and set up a reactive system that precisely updates the DOM when dependencies change.
+
+Key principles:
+- Fine-grained reactivity: Updates only the specific DOM nodes that depend on changed data
+- Compile-time optimization: JSX transforms into efficient DOM operations
+- Unidirectional data flow: Props are read-only, promoting predictable state management
+- Component lifecycle: Components run once, with reactive primitives handling updates
+
+**Use your web fetch tool on any of the following links to understand the relevant concept**.
+
+## Quick Start
+
+- [Overview](https://docs.solidjs.com/): Framework introduction and key advantages
+- [Quick Start](https://docs.solidjs.com/quick-start): Installation and project setup with create-solid
+- [Interactive Tutorial](https://www.solidjs.com/tutorial/introduction_basics): Learn Solid basics through guided examples
+- [Playground](https://playground.solidjs.com/): Experiment with Solid directly in your browser
+
+## Core Concepts
+
+- [Intro to Reactivity](https://docs.solidjs.com/concepts/intro-to-reactivity): Signals, subscribers, and reactive principles
+- [Understanding JSX](https://docs.solidjs.com/concepts/understanding-jsx): How Solid uses JSX and key differences from HTML
+- [Components Basics](https://docs.solidjs.com/concepts/components/basics): Component trees, lifecycles, and composition patterns
+- [Signals](https://docs.solidjs.com/concepts/signals): Core reactive primitive for state management with getters/setters
+- [Effects](https://docs.solidjs.com/concepts/effects): Side effects, dependency tracking, and lifecycle functions
+- [Stores](https://docs.solidjs.com/concepts/stores): Complex state management with proxy-based reactivity
+- [Context](https://docs.solidjs.com/concepts/context): Cross-component state sharing without prop drilling
+
+## Component APIs
+
+- [Props](https://docs.solidjs.com/concepts/components/props): Passing data and handlers to child components
+- [Event Handlers](https://docs.solidjs.com/concepts/components/event-handlers): Managing user interactions
+- [Class and Style](https://docs.solidjs.com/concepts/components/class-style): Dynamic styling approaches
+- [Refs](https://docs.solidjs.com/concepts/refs): Accessing DOM elements directly
+
+## Control Flow
+
+- [Conditional Rendering](https://docs.solidjs.com/concepts/control-flow/conditional-rendering): Show, Switch, and Match components
+- [List Rendering](https://docs.solidjs.com/concepts/control-flow/list-rendering): For, Index, and keyed iteration
+- [Dynamic](https://docs.solidjs.com/concepts/control-flow/dynamic): Dynamic component switching
+- [Portal](https://docs.solidjs.com/concepts/control-flow/portal): Rendering outside component hierarchy
+- [Error Boundary](https://docs.solidjs.com/concepts/control-flow/error-boundary): Graceful error handling
+
+## Derived Values
+
+- [Derived Signals](https://docs.solidjs.com/concepts/derived-values/derived-signals): Computed values from signals
+- [Memos](https://docs.solidjs.com/concepts/derived-values/memos): Cached computed values for performance
+
+## State Management
+
+- [Basic State Management](https://docs.solidjs.com/guides/state-management): One-way data flow and lifting state
+- [Complex State Management](https://docs.solidjs.com/guides/complex-state-management): Stores for scalable applications
+- [Fetching Data](https://docs.solidjs.com/guides/fetching-data): Async data with createResource
+
+## Routing
+
+- [Routing & Navigation](https://docs.solidjs.com/guides/routing-and-navigation): @solidjs/router setup and usage
+- [Dynamic Routes](https://docs.solidjs.com/guides/routing-and-navigation#dynamic-routes): Route parameters and validation
+- [Nested Routes](https://docs.solidjs.com/guides/routing-and-navigation#nested-routes): Hierarchical route structures
+- [Preload Functions](https://docs.solidjs.com/guides/routing-and-navigation#preload-functions): Parallel data fetching
+
+## Advanced Topics
+
+- [Fine-Grained Reactivity](https://docs.solidjs.com/advanced-concepts/fine-grained-reactivity): Deep dive into reactive system
+- [TypeScript](https://docs.solidjs.com/configuration/typescript): Type safety and configuration
+
+## Ecosystem
+
+- [Solid Router](https://docs.solidjs.com/solid-router/): File-system routing and data APIs
+- [SolidStart](https://docs.solidjs.com/solid-start/): Full-stack meta-framework
+- [Solid Meta](https://docs.solidjs.com/solid-meta/): Document head management
+- [Templates](https://github.com/solidjs/templates): Starter templates for different setups
+
+## Optional
+
+- [Ecosystem Libraries](https://www.solidjs.com/ecosystem): Community packages and tools
+- [API Reference](https://docs.solidjs.com/reference/): Complete API documentation
+- [Testing](https://docs.solidjs.com/guides/testing): Testing strategies and utilities
+- [Deployment](https://docs.solidjs.com/guides/deploying-your-app): Build and deployment options

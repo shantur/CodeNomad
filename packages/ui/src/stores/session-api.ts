@@ -8,9 +8,11 @@ import {
   activeSessionId,
   agents,
   clearSessionDraftPrompt,
+  getChildSessions,
+  isBlankSession,
   messagesLoaded,
-  providers,
   pruneDraftPrompts,
+  providers,
   setActiveSessionId,
   setAgents,
   setMessagesLoaded,
@@ -20,6 +22,7 @@ import {
   sessions,
   loading,
   setLoading,
+  cleanupBlankSessions,
 } from "./session-state"
 import { DEFAULT_MODEL_OUTPUT_LIMIT, getDefaultModel, isModelValid } from "./session-models"
 import { normalizeMessagePart } from "./message-v2/normalizers"
@@ -227,6 +230,8 @@ async function createSession(instanceId: string, agent?: string): Promise<Sessio
       next.set(instanceId, instanceInfo)
       return next
     })
+
+    await cleanupBlankSessions(instanceId, session.id)
 
     return session
   } catch (error) {
